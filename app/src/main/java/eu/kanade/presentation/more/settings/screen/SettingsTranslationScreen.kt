@@ -334,6 +334,7 @@ object SettingsTranslationScreen : SearchableSettings {
             "German" to stringResource(MR.strings.pref_translation_lang_german),
             "Portuguese" to stringResource(MR.strings.pref_translation_lang_portuguese),
             "Russian" to stringResource(MR.strings.pref_translation_lang_russian),
+            "Arabic" to stringResource(MR.strings.pref_translation_lang_arabic),
         )
         val sourceLangs = persistentMapOf(
             "" to stringResource(MR.strings.pref_translation_lang_auto_detect),
@@ -347,6 +348,7 @@ object SettingsTranslationScreen : SearchableSettings {
             "German" to stringResource(MR.strings.pref_translation_lang_german),
             "Portuguese" to stringResource(MR.strings.pref_translation_lang_portuguese),
             "Russian" to stringResource(MR.strings.pref_translation_lang_russian),
+            "Arabic" to stringResource(MR.strings.pref_translation_lang_arabic),
         )
 
         // 常駐頂層（不受總開關隱藏）：快速上手導覽 + 啟用翻譯總開關（從「翻譯」組移到頂層）。

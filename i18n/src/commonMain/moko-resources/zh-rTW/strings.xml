@@ -1542,6 +1542,7 @@
     <string name="pref_translation_lang_korean">韓文</string>
     <string name="pref_translation_lang_portuguese">葡萄牙文</string>
     <string name="pref_translation_lang_russian">俄文</string>
+    <string name="pref_translation_lang_arabic">阿拉伯文</string>
     <string name="pref_translation_lang_simp_chinese">簡體中文</string>
     <string name="pref_translation_lang_spanish">西班牙文</string>
     <string name="pref_translation_lang_trad_chinese">繁體中文（台灣）</string>
