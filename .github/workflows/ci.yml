@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # 允許在 GitHub 網頁上手動觸發
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -44,3 +45,12 @@ jobs:
       # gitignored 的 api-keys / local.properties 缺檔有後備（key→空字串、SDK→ANDROID_HOME），CI 不需提供。
       - name: Build (compile check)
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      # 把編好的 APK 存成 artifact，方便從網頁下載安裝。
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MTYOMI-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
