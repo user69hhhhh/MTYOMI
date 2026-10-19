@@ -1192,9 +1192,9 @@
     <string name="pref_translation_summary">AI 翻譯：偵測 / OCR / 去字在裝置上，翻譯走雲端 LLM</string>
     <!-- 翻譯 onboarding / 快速上手 -->
     <string name="onboarding_translation_heading">邊讀邊翻譯漫畫</string>
-    <string name="onboarding_translation_description">Yakuyomi 能幫你偵測對話框、做 OCR、去字並重新排版。除了「翻譯」本身以外，全部都在這台裝置上跑——你的圖片不會外傳。只有辨識出來的文字會送到你選的雲端 LLM（用你自己的 API key——這可能產生費用）。\n\n此功能預設關閉。現在就設定，或隨時到「設定 → 翻譯」設定。</string>
+    <string name="onboarding_translation_description">MTYOMI 能幫你偵測對話框、做 OCR、去字並重新排版。除了「翻譯」本身以外，全部都在這台裝置上跑——你的圖片不會外傳。只有辨識出來的文字會送到你選的雲端 LLM（用你自己的 API key——這可能產生費用）。\n\n此功能預設關閉。現在就設定，或隨時到「設定 → 翻譯」設定。</string>
     <string name="onboarding_translation_action">開啟翻譯設定</string>
-    <string name="onboarding_highlights_heading">Yakuyomi 亮點</string>
+    <string name="onboarding_highlights_heading">MTYOMI 亮點</string>
     <string name="onboarding_highlights_search_title">單手浮動搜尋</string>
     <string name="onboarding_highlights_search_desc">書庫與探索都能單手操作的底部搜尋球</string>
     <string name="onboarding_highlights_snapshot_title">快照＋追更新錨點</string>
@@ -1215,14 +1215,14 @@
     <string name="quickstart_manual_body">手動翻譯——在某本漫畫的章節清單，已下載的章節會顯示翻譯鈕。翻譯時圖示轉圈，完成變成主色，出錯變紅色。長按可多選，再按底部的「翻譯」。\n\n佇列——底部導覽列的「佇列」分頁列出所有翻譯與夜讀工作及其狀態。可在那裡暫停／繼續、取消，或重試失敗的章節。\n\n重繪——已經翻好某章、但想要更乾淨的去字？在設定改去字方法（會問你要不要更新既有章節），或長按頁面 →「換去字法」。不需重新 OCR 或重新翻譯。</string>
     <string name="quickstart_action_done">了解</string>
     <!-- 整體增強導覽（相對 mihon 的所有強化，可滑動瀏覽） -->
-    <string name="enhancements_guide_title">Yakuyomi 增強功能</string>
+    <string name="enhancements_guide_title">MTYOMI 增強功能</string>
     <string name="enhancements_guide_about_summary">探索相對 mihon 的所有強化</string>
     <string name="enhancements_guide_open">查看全部增強</string>
     <string name="enhancements_guide_action_done">完成</string>
     <!-- 頁 1：翻譯 -->
     <string name="enhancements_guide_translation_title">翻譯</string>
     <string name="enhancements_guide_tr_inpaint_title">真去字重建，不是疊字</string>
-    <string name="enhancements_guide_tr_inpaint_desc">其他 fork 是在文字上蓋一塊色塊、或把新字疊上去；Yakuyomi 把原文擦掉、重建畫面，再把譯文排回氣泡裡。</string>
+    <string name="enhancements_guide_tr_inpaint_desc">其他 fork 是在文字上蓋一塊色塊、或把新字疊上去；MTYOMI 把原文擦掉、重建畫面，再把譯文排回氣泡裡。</string>
     <string name="enhancements_guide_tr_ondevice_title">全裝置端，只有 LLM 離裝置</string>
     <string name="enhancements_guide_tr_ondevice_desc">偵測、OCR、去字全在你的手機上跑；只有 OCR 出來的文字送到雲端 LLM。你的圖片永遠不出手機。</string>
     <string name="enhancements_guide_tr_workflows_title">兩種工作流</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Yakuyomi</string>
+    <string name="app_name" translatable="false">MTYOMI</string>
 
     <!-- Generic strings -->
     <string name="on">On</string>
@@ -406,9 +406,9 @@
     <string name="pref_translation_summary">AI translation: on-device detection/OCR/text-removal + cloud LLM</string>
     <!-- Translation onboarding / quickstart -->
     <string name="onboarding_translation_heading">Translate manga as you read</string>
-    <string name="onboarding_translation_description">Yakuyomi can detect, OCR, erase and re-typeset speech bubbles for you. Everything except the translation itself runs on this device — your images never leave it. Only the recognized text is sent to the cloud LLM you choose (your own API key — this can cost money).\n\nTranslation is off by default. Set it up now, or any time under Settings → Translation.</string>
+    <string name="onboarding_translation_description">MTYOMI can detect, OCR, erase and re-typeset speech bubbles for you. Everything except the translation itself runs on this device — your images never leave it. Only the recognized text is sent to the cloud LLM you choose (your own API key — this can cost money).\n\nTranslation is off by default. Set it up now, or any time under Settings → Translation.</string>
     <string name="onboarding_translation_action">Open translation setup</string>
-    <string name="onboarding_highlights_heading">What makes Yakuyomi different</string>
+    <string name="onboarding_highlights_heading">What makes MTYOMI different</string>
     <string name="onboarding_highlights_search_title">One-hand floating search</string>
     <string name="onboarding_highlights_search_desc">A bottom search ball for the library and browse</string>
     <string name="onboarding_highlights_snapshot_title">Snapshots &amp; catch-up anchor</string>
@@ -429,14 +429,14 @@
     <string name="quickstart_manual_body">Manual translate — on a manga\'s chapter list, downloaded chapters show a translate button. The icon spins while running, turns the accent color when done, and red on error. Long-press to multi-select, then tap Translate in the bottom bar.\n\nQueue — the Queue tab in the bottom navigation bar lists every translation and night-page job with its status. Pause or resume, cancel, or retry failed chapters there.\n\nRe-render — already translated a chapter but want cleaner text removal? Change the method in Settings (you will be asked to update existing chapters), or long-press a page → Text removal. No re-OCR or re-translation needed.</string>
     <string name="quickstart_action_done">Got it</string>
     <!-- Enhancements guide (a swipeable tour of everything this fork adds on top of mihon) -->
-    <string name="enhancements_guide_title">Yakuyomi enhancements</string>
+    <string name="enhancements_guide_title">MTYOMI enhancements</string>
     <string name="enhancements_guide_about_summary">Everything this fork adds on top of mihon</string>
     <string name="enhancements_guide_open">See all enhancements</string>
     <string name="enhancements_guide_action_done">Done</string>
     <!-- Page 1: Translation -->
     <string name="enhancements_guide_translation_title">Translation</string>
     <string name="enhancements_guide_tr_inpaint_title">Real inpainting, not overlays</string>
-    <string name="enhancements_guide_tr_inpaint_desc">Other forks paint a box over the text or stamp new text on top. Yakuyomi erases the original art, reconstructs it, then typesets the translation back into the bubble.</string>
+    <string name="enhancements_guide_tr_inpaint_desc">Other forks paint a box over the text or stamp new text on top. MTYOMI erases the original art, reconstructs it, then typesets the translation back into the bubble.</string>
     <string name="enhancements_guide_tr_ondevice_title">On-device, only the LLM leaves</string>
     <string name="enhancements_guide_tr_ondevice_desc">Detection, OCR and text removal all run on your phone; only the OCR\'d text is sent to the cloud LLM. Your images never leave the device.</string>
     <string name="enhancements_guide_tr_workflows_title">Two workflows</string>

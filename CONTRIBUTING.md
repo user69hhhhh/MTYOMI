@@ -2,7 +2,7 @@ Looking to report an issue/bug or make a feature request? Please open an issue a
 
 ---
 
-Thanks for your interest in contributing to Yakuyomi!
+Thanks for your interest in contributing to MTYOMI!
 
 
 # Code contributions

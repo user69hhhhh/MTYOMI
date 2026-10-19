@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./.github/assets/yakuyomi-logo.png" alt="Yakuyomi" width="80"/>
+<img src="./.github/assets/yakuyomi-logo.png" alt="MTYOMI" width="80"/>
 
-# Yakuyomi
+# MTYOMI
 
 **裝置端 AI 翻譯的漫畫閱讀器。**
 
@@ -13,20 +13,20 @@
 
 </div>
 
-Yakuyomi 是 [mihon](https://github.com/mihonapp/mihon) 的 fork，邊下載 / 邊讀邊把漫畫翻譯掉——預設日翻繁中，語言對可任意設定。文字的**偵測、OCR、去字都在裝置上跑**（三顆模型全走 NCNN、純 CPU），只有**翻譯**這步呼叫雲端 LLM。另有把頁面本身變暗的**夜讀模式**，同樣在裝置上做。引擎是另一個 repo [yakuyomi-engine](https://github.com/joyeli/yakuyomi-engine)，在這裡以 submodule 引入。
+MTYOMI 是 [mihon](https://github.com/mihonapp/mihon) 的 fork，邊下載 / 邊讀邊把漫畫翻譯掉——預設日翻繁中，語言對可任意設定。文字的**偵測、OCR、去字都在裝置上跑**（三顆模型全走 NCNN、純 CPU），只有**翻譯**這步呼叫雲端 LLM。另有把頁面本身變暗的**夜讀模式**，同樣在裝置上做。引擎是另一個 repo [yakuyomi-engine](https://github.com/joyeli/yakuyomi-engine)，在這裡以 submodule 引入。
 
 <div align="center">
-<img src="./.github/assets/showcase.png" alt="Box-fill vs Yakuyomi 去字" width="100%"/>
+<img src="./.github/assets/showcase.png" alt="Box-fill vs MTYOMI 去字" width="100%"/>
 <br>
-<sub><b>字壓在畫面上（頭髮、臉、背景）——正是疊字 / box-fill 翻譯的死穴。</b>Yakuyomi 把原文擦掉、重建畫面（3），再把譯文嵌回去（4）。</sub>
+<sub><b>字壓在畫面上（頭髮、臉、背景）——正是疊字 / box-fill 翻譯的死穴。</b>MTYOMI 把原文擦掉、重建畫面（3），再把譯文嵌回去（4）。</sub>
 </div>
 
-## Yakuyomi 的特點
+## MTYOMI 的特點
 
 以下全是疊在原版 mihon 之上的——一眼看出在這個 fork 你拿到了別人沒有的什麼：
 
 **翻譯**
-- **真去字重建，不是疊字** — 其他翻譯 fork 是在文字上蓋一塊色塊、或把新字疊上去；Yakuyomi 是把原文**擦掉、重建畫面**（AOT-GAN 去字），再把譯文排回氣泡裡。
+- **真去字重建，不是疊字** — 其他翻譯 fork 是在文字上蓋一塊色塊、或把新字疊上去；MTYOMI 是把原文**擦掉、重建畫面**（AOT-GAN 去字），再把譯文排回氣泡裡。
 - **裝置端 pipeline（全 NCNN、純 CPU）** — 偵測（DBNet）、OCR（48px CTC）、去字（AOT-GAN）三顆模型全跑 **NCNN** 行動核心，引擎已完全不依賴 ONNX Runtime，光這點 APK 就少了約 70 MB。OCR 是**混合精度**版——backbone fp16、transformer 與字元預測頭 fp32——Snapdragon 8 Gen 3 上 9 頁 242 行與 fp32 參考 **241 行相同**（唯一不同的那行是參考讀錯；242 行全部讀出、無空讀），比它取代的 int8 模型**快 ~23%**（同一批頁 11.3 秒 vs 14.6 秒、約 1.25 秒/頁）；偵測平均約 0.79 秒/頁，DBNet 偵測器比它取代的舊偵測器多讀對 ~1.6–2.5× 的文字。純 CPU（GPU/NPU 試過、對這些模型沒幫助）。只有 LLM 翻譯那步離開裝置，圖片永遠不出手機。
 - **跨頁流水線** — 多頁併發翻：某頁在等雲端 LLM 時，下一頁的裝置端偵測 / OCR / 去字已經在跑。用快速去字（平塗）時撞到網路上限——吞吐約為循序的**兩倍**；AI 去字（下載時翻與即時翻的預設）卡在 CPU，所以同時只跑兩頁、不是四頁。
 - **兩種工作流** — 下載時翻（整章背景翻）與邊讀邊翻；只有翻成功才覆蓋該頁，絕不用更糟的東西蓋掉原圖。
@@ -59,12 +59,12 @@ Yakuyomi 是 [mihon](https://github.com/mihonapp/mihon) 的 fork，邊下載 / �
 </div>
 
 **擷取**
-- **內建瀏覽器，截下來就是一話** — 在「其他」分頁點「擷取漫畫」，用 Yakuyomi 內建的全螢幕瀏覽器打開任一網址（有我的最愛與網址歷史），把它**顯示出來的畫面**存成頁圖、落進本機書庫。存完就是一本普通的本機漫畫：能讀、能歸分類，也能走跟其他漫畫一模一樣的裝置端 OCR 與翻譯流程。
+- **內建瀏覽器，截下來就是一話** — 在「其他」分頁點「擷取漫畫」，用 MTYOMI 內建的全螢幕瀏覽器打開任一網址（有我的最愛與網址歷史），把它**顯示出來的畫面**存成頁圖、落進本機書庫。存完就是一本普通的本機漫畫：能讀、能歸分類，也能走跟其他漫畫一模一樣的裝置端 OCR 與翻譯流程。
 - **半自動與全自動** — 用畫面差異雙門檻（畫面**靜止**且內容**真的變了**）自行判斷換頁並存檔，載入中那種近乎純色的過場畫面自動跳過；你只要翻頁。設好一次「點擊位置」後它會自己翻頁——模擬觸控、不對網頁注入任何腳本——整話全自動不用顧。
 - **四種停止方式** — 截滿你填的本話頁數、連續兩次點擊畫面都沒變（到最後一頁或位置點錯）、存檔失敗（沒填書名／章名，或連續寫檔失敗）、或你自己按停止。自動停下來時，確認頁會告訴你是為什麼停的。
 - **逐站設定，以網域記住** — 畫布寬度（寬螢幕上把版面縮窄，一整頁就塞得進一屏）、可拖曳（或按「自動偵測」）的上下裁切線切掉網站頁首頁尾（畫面上以灰罩常駐標示）、自動修邊（雙開頁 / 短頁多出來的空白自動去掉），以及自動翻頁的點擊位置與延遲。
 - **成為一話之前先確認** — 按停止會進 3 欄縮圖網格：勾選刪除、單頁重截（會開回那頁當初的網址）、在兩頁之間補插漏掉的一頁、繼續擷取，或儲存——儲存時把剩下的頁重新編號成連續無缺號。書名可從網頁標題帶入再自己改，封面用框選截圖；本機漫畫詳情頁的「**繼續擷取**」會開回當初的網址、續截的頁存回同一本。
-- **截不到的東西** — 被系統標記為受保護（DRM）的內容截出來是空白。這是刻意的，Yakuyomi 不去繞過它。
+- **截不到的東西** — 被系統標記為受保護（DRM）的內容截出來是空白。這是刻意的，MTYOMI 不去繞過它。
 
 <div align="center">
 <img src="./.github/assets/yakuyomi-capture-auto.gif" alt="全自動擷取：內建瀏覽器自己翻頁，每張穩定下來的畫面自動存檔，頁數一頁一頁往上跳" height="440" hspace="6"/>
@@ -221,7 +221,7 @@ flowchart TD
 
 <sub>¹ 只算翻譯（LLM）這一步——偵測 / OCR / 去字在任何情況下都仍在裝置上跑，所以**不是**「一秒生一張完成圖」。裝置端數字是概估（圖中虛線），非實測。</sub>
 
-所以 Yakuyomi 把耗算力的視覺工作留在裝置、只把文字送雲端 LLM：翻譯實際上等於免費、又快又高品質、任何手機都能跑——而偵測 / OCR / 去字讓你的圖片留在裝置上。
+所以 MTYOMI 把耗算力的視覺工作留在裝置、只把文字送雲端 LLM：翻譯實際上等於免費、又快又高品質、任何手機都能跑——而偵測 / OCR / 去字讓你的圖片留在裝置上。
 
 ## 編譯
 
@@ -237,7 +237,7 @@ cd Yakuyomi
 
 ## 與 mihon 的關係
 
-Yakuyomi 是真正的 mihon fork，跟著 mihon 的正式版走。疊在上面的有兩類改動：接引擎的整合層——下載 / 翻譯 hook、翻譯與夜讀共用的佇列、翻譯與夜讀設定、模型管理、品牌——以及上面列的閱讀器、書庫、瀏覽、搜尋與擷取功能。裝置端 ML 隔離在引擎 submodule 裡（翻譯與夜讀在那裡是分開的模組，夜讀不必帶翻譯引擎；夜讀演算法本身是巢狀在引擎裡的 [yakuyomi-nightread](https://github.com/joyeli/yakuyomi-nightread) 函式庫），所以引擎能自己單獨測。
+MTYOMI 是真正的 mihon fork，跟著 mihon 的正式版走。疊在上面的有兩類改動：接引擎的整合層——下載 / 翻譯 hook、翻譯與夜讀共用的佇列、翻譯與夜讀設定、模型管理、品牌——以及上面列的閱讀器、書庫、瀏覽、搜尋與擷取功能。裝置端 ML 隔離在引擎 submodule 裡（翻譯與夜讀在那裡是分開的模組，夜讀不必帶翻譯引擎；夜讀演算法本身是巢狀在引擎裡的 [yakuyomi-nightread](https://github.com/joyeli/yakuyomi-nightread) 函式庫），所以引擎能自己單獨測。
 
 ## 免責聲明
 
@@ -245,7 +245,7 @@ Yakuyomi 是真正的 mihon fork，跟著 mihon 的正式版走。疊在上面�
 
 ## 授權
 
-**GPL-3.0** — 見 [LICENSE-YAKUYOMI.md](LICENSE-YAKUYOMI.md)。Yakuyomi 把 mihon（Apache-2.0，見 [LICENSE](LICENSE)）與引擎結合——翻譯部分移植了 manga-image-translator 的 prompt / 參數 schema / 分組、並用 GPL-3.0 模型權重，夜讀部分是 GPL-3.0 的 yakuyomi-nightread 函式庫——故組合後的 app 為 GPL-3.0。mihon 的 Apache-2.0 授權與歸屬予以保留。選配的夜讀人物分割模型權重不是 GPL-3.0：僅供研究／非商業用途散布，出處歸屬與條件見 [LICENSE-YAKUYOMI.md](LICENSE-YAKUYOMI.md)。
+**GPL-3.0** — 見 [LICENSE-YAKUYOMI.md](LICENSE-YAKUYOMI.md)。MTYOMI 把 mihon（Apache-2.0，見 [LICENSE](LICENSE)）與引擎結合——翻譯部分移植了 manga-image-translator 的 prompt / 參數 schema / 分組、並用 GPL-3.0 模型權重，夜讀部分是 GPL-3.0 的 yakuyomi-nightread 函式庫——故組合後的 app 為 GPL-3.0。mihon 的 Apache-2.0 授權與歸屬予以保留。選配的夜讀人物分割模型權重不是 GPL-3.0：僅供研究／非商業用途散布，出處歸屬與條件見 [LICENSE-YAKUYOMI.md](LICENSE-YAKUYOMI.md)。
 
 ## 致謝
 
