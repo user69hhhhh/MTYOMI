@@ -90,6 +90,12 @@ object EngineConfigMapping {
                 ocrUnsharp = prefs.ocrUnsharp.get(),
                 concurrent = true,
                 concurrency = ocrConcurrency,
+                // 阿拉伯文 OCR 後端（fork）：來源＝阿拉伯文＋偏好選 paddle 才走 PaddleOCR，其餘一律主路徑。
+                engine = if (prefs.sourceLangName.get() == "Arabic" && prefs.arabicOcrEngine.get() == "paddle") {
+                    "paddle"
+                } else {
+                    "default"
+                },
             ),
             translator = translatorCfg,
             inpainter = inpainterConfig(prefs, methodRaw),
@@ -157,6 +163,7 @@ object EngineConfigMapping {
         prefs.useBicubic.get(),
         prefs.ocrUnsharp.get().toString(),
         prefs.ocrConcurrency.get(),
+        prefs.arabicOcrEngine.get(), // 阿拉伯文 OCR 後端（與 sourceLangName 一起決定 OcrConfig.engine）
         // —— 去字（InpainterConfig）——
         prefs.bboxPad.get(),
         prefs.tileSize.get().toString(),
@@ -172,6 +179,9 @@ object EngineConfigMapping {
         prefs.rowTrim.get(),
         prefs.fontScale.get(),
         prefs.tateChuYoko.get().toString(),
+        // 譯文字型（不進 EngineConfig、由 TranslationEngineService 讀出 Typeface 傳 create，同 apiKey 的通道；
+        // 仍須進簽章，改了才會重建引擎套用新字型）
+        prefs.translationFont.get(),
     )
 
     // 進階數值：存字串、此處 parse + clamp 到值域（超界夾回，不擋存）。

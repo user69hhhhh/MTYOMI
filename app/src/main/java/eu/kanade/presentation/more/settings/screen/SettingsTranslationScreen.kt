@@ -1,12 +1,16 @@
 package eu.kanade.presentation.more.settings.screen
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,9 +24,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastMap
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -30,6 +38,7 @@ import eu.kanade.domain.source.interactor.GetSourcesWithFavoriteCount
 import eu.kanade.presentation.category.visualName
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.widget.TriStateListDialog
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.translation.ModelDownloadManager
 import eu.kanade.tachiyomi.data.translation.TranslationEngineConfig
 import eu.kanade.tachiyomi.data.translation.TranslationEngineService
@@ -108,6 +117,8 @@ object SettingsTranslationScreen : SearchableSettings {
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
         val showAdvanced by prefs.showAdvanced.collectAsState()
+        val sourceLang by prefs.sourceLangName.collectAsState()
+        val translationFont by prefs.translationFont.collectAsState()
         val privacyAck by prefs.privacyAcknowledged.collectAsState()
         val cores = remember { Runtime.getRuntime().availableProcessors() }
         // 進階參數 subtitle 的「。現值：%s」尾綴（%s 由 EditTextPreference 框架填現值）。
@@ -621,6 +632,18 @@ object SettingsTranslationScreen : SearchableSettings {
                         subtitle = stringResource(MR.strings.pref_translation_source_lang_subtitle),
                         subtitleProvider = { _, _ -> stringResource(MR.strings.pref_translation_source_lang_subtitle) },
                     ),
+                    // 阿拉伯文 OCR 後端（fork）：只在來源＝阿拉伯文時出現。default 引擎讀不出阿拉伯文（未受訓），
+                    // paddle＝內建 PaddleOCR 阿拉伯文模型。改了會讓引擎重建（簽章有納入）。
+                    Preference.PreferenceItem.ListPreference(
+                        preference = prefs.arabicOcrEngine,
+                        entries = persistentMapOf(
+                            "default" to stringResource(MR.strings.pref_translation_ocr_engine_default),
+                            "paddle" to stringResource(MR.strings.pref_translation_ocr_engine_paddle),
+                        ),
+                        title = stringResource(MR.strings.pref_translation_arabic_ocr_engine),
+                        subtitle = stringResource(MR.strings.pref_translation_arabic_ocr_engine_subtitle),
+                        subtitleProvider = { _, _ -> stringResource(MR.strings.pref_translation_arabic_ocr_engine_subtitle) },
+                    ).takeIf { sourceLang == "Arabic" },
                 ).toImmutableList(),
             ),
             // —— 模型 ——
@@ -693,6 +716,55 @@ object SettingsTranslationScreen : SearchableSettings {
                             true
                         },
                     ),
+                    // 譯文字型（fork）：只有 Default／Cairo／Tajawal 三選（阿拉伯掃譯最常用兩款＋系統預設），
+                    // 每列的範例句直接用該字型即時預覽。改了觸發 LAYOUT 重繪（同排版組其他項）。
+                    Preference.PreferenceItem.CustomPreference(
+                        title = stringResource(MR.strings.pref_translation_font),
+                    ) {
+                        val cairoFamily = remember { FontFamily(Font(R.font.cairo)) }
+                        val tajawalFamily = remember { FontFamily(Font(R.font.tajawal)) }
+                        val choices = listOf(
+                            Triple(
+                                TranslationPreferences.FONT_DEFAULT,
+                                stringResource(MR.strings.pref_translation_font_default),
+                                null,
+                            ),
+                            Triple(TranslationPreferences.FONT_CAIRO, "Cairo", cairoFamily),
+                            Triple(TranslationPreferences.FONT_TAJAWAL, "Tajawal", tajawalFamily),
+                        )
+                        Column {
+                            choices.forEach { (value, label, family) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            prefs.translationFont.set(value)
+                                            if (prefs.translationMasterEnabled.get() &&
+                                                (prefs.translationEnabled.get() || prefs.liveTranslate.get())
+                                            ) {
+                                                pendingRenderUpdate = RenderUpdateKind.LAYOUT
+                                            }
+                                        }
+                                        .padding(horizontal = 24.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    RadioButton(
+                                        selected = translationFont == value,
+                                        onClick = null,
+                                    )
+                                    Column(modifier = Modifier.padding(start = 12.dp)) {
+                                        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                                        Text(
+                                            text = stringResource(MR.strings.pref_translation_font_sample),
+                                            fontFamily = family,
+                                            fontSize = 15.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
                     // 文字顏色 / 描邊收進進階：一般使用者用預設 auto + 描邊即可。
                     Preference.PreferenceItem.ListPreference(
                         preference = prefs.colorMode,

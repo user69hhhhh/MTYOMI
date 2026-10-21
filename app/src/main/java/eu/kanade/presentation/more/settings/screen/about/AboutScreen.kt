@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -174,16 +176,11 @@ object AboutScreen : Screen() {
                             .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        LinkIcon(
-                            label = "GitHub",
-                            icon = CustomIcons.Github,
-                            url = "https://github.com/joyeli/Yakuyomi",
-                        )
-                        // 基於 mihon（Apache-2.0）：保留原專案歸屬連結。
-                        LinkIcon(
-                            label = "mihon",
-                            icon = Icons.Outlined.Public,
-                            url = "https://github.com/mihonapp/mihon",
+                        // MTYOMI fork：移除 yakuyomi 與 mihon 的 GitHub 連結；自家 repo 未公開前以 Coming soon 佔位。
+                        Text(
+                            text = "Coming soon",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

@@ -38,6 +38,16 @@ object TranslationEngineConfig {
     private const val ALPHABET = "models/alphabet-all-v5.txt"
 
     /**
+     * PaddleOCR 阿拉伯文模型（fork 內建於引擎 assets，非 BYOM/下載）：`paddle_ar_rec.ncnn.param/.bin`＋字典。
+     * 引擎 [ModelSet.ocrPaddleArabic] 用檔名關鍵字 `paddle` 認（與其他角色不撞）；app 端在 [resolveModelSet]
+     * 先把 assets 複製進自動下載區（[ensurePaddleAssets]），再照一般 NCNN 路徑解析。
+     */
+    private const val PADDLE_PARAM_ASSET = "models/paddle_ar_rec.ncnn.param"
+    private const val PADDLE_BIN_ASSET = "models/paddle_ar_rec.ncnn.bin"
+    private const val ARABIC_DICT_ASSET = "models/arabic_dict.txt"
+    private const val PADDLE_KEYWORD = "paddle"
+
+    /**
      * OCR 角色 base `.param` 的檔名關鍵字（`ocr_48px_ctc.ncnn.param`，manifest models-v4）。
      * ★ 刻意含 `.ncnn`、不能只寫 `ocr`：同目錄還有 `ocr_48px_ctc_mixed.ncnn.param`（混合精度、共用同一份 `.bin`），
      * 只用 `ocr` 會兩份都命中、撈到 mixed 時 [resolveNcnnRole]/[ncnnResolvable] 由 `.param` 名推出的
@@ -62,8 +72,12 @@ object TranslationEngineConfig {
 
     private val storagePreferences: StoragePreferences = Injekt.get()
 
-    /** [resolveModelSet] 的回傳：三顆模型的本機路徑 [ModelSet] + OCR 字元表（CTC 解碼用）。 */
-    data class ModelSetBundle(val models: ModelSet, val alphabet: List<String>)
+    /** [resolveModelSet] 的回傳：三顆模型的本機路徑 [ModelSet] + OCR 字元表（CTC 解碼用）＋阿拉伯字典（PaddleOCR 解碼用，未用 paddle 時可空）。 */
+    data class ModelSetBundle(
+        val models: ModelSet,
+        val alphabet: List<String>,
+        val paddleAlphabet: List<String> = emptyList(),
+    )
 
     /**
      * [modelPresence] 的一列：[label] 顯示名、[present] 有無檔、[optional] 是否選配。
@@ -307,12 +321,37 @@ object TranslationEngineConfig {
         val detNcnn = resolveNcnnRole(context, saf, DETECTOR_KEYWORD) ?: return null
         val aotNcnn = resolveNcnnRole(context, saf, "aot") ?: return null
         val alphabet = context.assets.open(ALPHABET).bufferedReader().use { it.readLines() }
+        // 阿拉伯文 PaddleOCR（fork 內建、選配）：assets 先落地到下載區再照一般路徑解析；失敗/缺檔＝null，主 OCR 不受影響。
+        runCatching { ensurePaddleAssets(context) }
+        val paddle = runCatching { resolveNcnnRole(context, saf, PADDLE_KEYWORD) }.getOrNull()
+        val paddleAlphabet = runCatching {
+            context.assets.open(ARABIC_DICT_ASSET).bufferedReader().use { it.readLines() }
+        }.getOrDefault(emptyList())
         // 夜讀人物分割（ModelSet.charSegYoloNcnn/charSegCsegNcnn）刻意留 null：翻譯引擎用不到，
         // 不讓每次建引擎都為選配模型付 SAF 複製（BYOM 最多 ~147MB）；夜讀端自己走 resolveCharSegModels。
         return ModelSetBundle(
-            ModelSet(ocr = ocr, detectorNcnn = detNcnn, aotInpainterNcnn = aotNcnn),
+            ModelSet(ocr = ocr, detectorNcnn = detNcnn, aotInpainterNcnn = aotNcnn, ocrPaddleArabic = paddle),
             alphabet,
+            paddleAlphabet,
         )
+    }
+
+    /**
+     * 把 fork 內建的 PaddleOCR 模型（引擎 assets）複製進自動下載區，讓 [resolveNcnnRole] 照一般路徑找到。
+     * 冪等：既有檔與 asset 同大小就跳過；寫入走 tmp 檔再 rename，中途被殺不會留下半套檔被誤判齊全。
+     */
+    private fun ensurePaddleAssets(context: Context) {
+        val dir = downloadedDir(context).apply { mkdirs() }
+        for (asset in listOf(PADDLE_PARAM_ASSET, PADDLE_BIN_ASSET)) {
+            val out = File(dir, asset.substringAfterLast('/'))
+            if (out.exists() && out.length() > 0) {
+                val assetLen = runCatching { context.assets.openFd(asset).use { it.length } }.getOrNull()
+                if (assetLen == null || assetLen == out.length()) continue
+            }
+            val tmp = File(dir, out.name + ".tmp")
+            context.assets.open(asset).use { input -> tmp.outputStream().use { input.copyTo(it, 1 shl 16) } }
+            tmp.renameTo(out)
+        }
     }
 
     /**

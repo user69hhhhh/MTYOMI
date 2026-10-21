@@ -2,6 +2,9 @@ package eu.kanade.tachiyomi.data.translation
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Typeface
+import androidx.core.content.res.ResourcesCompat
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.crash.TraceLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +89,19 @@ class TranslationEngineService(private val context: Context) {
 
     /** key：設定頁（BYOK，Keystore 加密），與 [PageTranslator] 同規則；沒有 build 時寫進 APK 的後備 key。 */
     private fun apiKey(): String = translationPreferences.activeApiKey()
+
+    /**
+     * 譯文排版字型（設定 › 翻譯 › 字型）：cairo/tajawal＝app 內建字型（res/font）；default 或載入失敗 → null
+     * （引擎 Renderer 退回系統預設）。每次建引擎時讀 pref（簽章有納入 translationFont，改了必重建、不會用到舊字型）。
+     */
+    private fun translationTypeface(): Typeface? {
+        val resId = when (translationPreferences.translationFont.get()) {
+            TranslationPreferences.FONT_CAIRO -> R.font.cairo
+            TranslationPreferences.FONT_TAJAWAL -> R.font.tajawal
+            else -> return null
+        }
+        return runCatching { ResourcesCompat.getFont(context, resId) }.getOrNull()
+    }
 
     /**
      * 引擎是否就緒：key 有設 + 3 顆模型齊。給 [ChapterLoader] 決定要不要包 [TranslatingPageLoader]。
@@ -205,7 +221,14 @@ class TranslationEngineService(private val context: Context) {
             // 去字法照呼叫端傳入（佇列逐章帶來的去字法），其餘參數（語言/緒數/排版…）照使用者設定。
             val cfg = TranslationEngineConfig.buildEngineConfig(translationPreferences, methodRaw)
             TraceLog.log("svc", "ensureEngine.create.start")
-            val built = Yakuyomi.create(bundle.models, bundle.alphabet, apiKey(), cfg)
+            val built = Yakuyomi.create(
+                bundle.models,
+                bundle.alphabet,
+                apiKey(),
+                cfg,
+                typeface = translationTypeface(),
+                paddleAlphabet = bundle.paddleAlphabet,
+            )
             TraceLog.log("svc", "ensureEngine.create.done")
             engine = built
             builtSignature = signature

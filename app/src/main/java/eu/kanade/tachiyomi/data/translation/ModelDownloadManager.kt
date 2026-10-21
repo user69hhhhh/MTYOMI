@@ -253,7 +253,7 @@ class ModelDownloadManager(private val context: Context) {
     private fun notify(title: String, text: String, ongoing: Boolean, percent: Int = 0) {
         try {
             val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_TRANSLATOR_PROGRESS)
-                .setSmallIcon(R.drawable.ic_mihon)
+                .setSmallIcon(R.drawable.ic_mtyomi)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setOngoing(ongoing)

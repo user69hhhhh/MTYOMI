@@ -1481,6 +1481,10 @@
     <string name="pref_translation_download_models_error">Failed: %s (tap to retry)</string>
     <string name="pref_translation_target_lang">Target language</string>
     <string name="pref_translation_source_lang">Source language</string>
+    <string name="pref_translation_arabic_ocr_engine">Arabic OCR engine</string>
+    <string name="pref_translation_arabic_ocr_engine_subtitle">The default engine was not trained on Arabic and cannot read it. PaddleOCR uses the built-in Arabic model.</string>
+    <string name="pref_translation_ocr_engine_default">Default</string>
+    <string name="pref_translation_ocr_engine_paddle">PaddleOCR</string>
     <string name="pref_translation_render_update_title">Update translated chapters</string>
     <string name="pref_translation_render_update_upgrade">Text-removal method changed. Re-render all translated chapters with the current settings? It only upgrades removal quality, never downgrades (keeps the best result); loose downloaded chapters with saved materials only.</string>
     <string name="pref_translation_render_update_layout">Typesetting changed. Re-render all translated chapters with the new layout? Each keeps its own removal method, only the layout changes; loose downloaded chapters with saved materials only.</string>
@@ -1493,6 +1497,9 @@
     <string name="pref_translation_color_mode">Text color</string>
     <string name="pref_translation_color_auto">Auto (black/white by background)</string>
     <string name="pref_translation_color_mono">Always black with a white outline</string>
+    <string name="pref_translation_font">Translation font</string>
+    <string name="pref_translation_font_default">Default</string>
+    <string name="pref_translation_font_sample">Heroes never give up! الأبطال لا يستسلمون أبداً 123</string>
     <string name="pref_translation_font_border">Text outline</string>
     <string name="pref_translation_font_border_summary">An outline makes text on busy backgrounds easier to read</string>
     <string name="pref_translation_ocr_concurrency">OCR concurrency</string>

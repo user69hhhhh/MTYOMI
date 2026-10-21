@@ -112,6 +112,21 @@ class TranslationPreferences(
     /** 來源語言標註（進 prompt；留空＝讓 LLM 自己判。實際來源由 OCR 模型決定＝BYOM）。 */
     val sourceLangName = preferenceStore.getString("translation_source_lang", DEFAULT_SOURCE_LANG)
 
+    /**
+     * 阿拉伯文 OCR 後端（`default`／`paddle`；fork 新增）。只在來源語言＝阿拉伯文時有意義：`default`＝內建 48px CTC
+     * （未受阿拉伯文訓練、讀不出）；`paddle`＝PaddleOCR 阿拉伯文模型（fork 內建於引擎 assets）。
+     * 對應引擎 OcrConfig.engine：app 的 buildEngineConfig 只在「來源＝阿拉伯文＋此值＝paddle」時傳 "paddle"。
+     */
+    val arabicOcrEngine = preferenceStore.getString("translation_arabic_ocr_engine", DEFAULT_ARABIC_OCR_ENGINE)
+
+    /**
+     * 翻譯排版字型（`default`／`cairo`／`tajawal`；fork 新增）：決定譯文畫進氣泡時用的字型。
+     * `default`＝引擎系統預設；cairo/tajawal＝app 內建字型（res/font，阿拉伯文掃譯圈最常用兩款、附設定頁預覽）。
+     * 不進 EngineConfig——由 [TranslationEngineService] 讀出 Typeface 傳給 `Yakuyomi.create`（同 apiKey 的通道）；
+     * 但**有進重建簽章**（EngineConfigMapping.signatureFields），改了會重建引擎即時生效。
+     */
+    val translationFont = preferenceStore.getString("translation_font", FONT_DEFAULT)
+
     /** 排版方向（auto/vertical/horizontal），對應引擎 RenderConfig.orientation。 */
     val orientation = preferenceStore.getString("translation_orientation", DEFAULT_ORIENTATION)
 
@@ -289,6 +304,10 @@ class TranslationPreferences(
         const val DEFAULT_LIVE_INPAINT_METHOD = "auto_whole"
         const val DEFAULT_OCR_CONCURRENCY = "auto" // auto=硬體核數（多數手機8核）；真機 8.9s→4.8s 快46%
         const val DEFAULT_COLOR_MODE = "auto" // auto=依背景亮度判黑/白字
+        const val DEFAULT_ARABIC_OCR_ENGINE = "default" // default=內建 CTC；paddle=PaddleOCR 阿拉伯文（僅來源=阿拉伯文時生效）
+        const val FONT_DEFAULT = "default" // 譯文字型：default=系統預設；cairo/tajawal=內建字型（res/font）
+        const val FONT_CAIRO = "cairo"
+        const val FONT_TAJAWAL = "tajawal"
     }
 }
 
