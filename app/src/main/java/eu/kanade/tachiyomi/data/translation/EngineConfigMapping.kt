@@ -31,7 +31,12 @@ object EngineConfigMapping {
      * → 引擎 method。兩門別：`boxfill`（快速去字·平塗）／其餘＝`aot`（AI 去字·NCNN AOT-GAN 整頁·預設）。
      * 集中於此一處映射、下載/即時/重繪共用。
      */
-    fun mapInpaintMethod(methodRaw: String): String = if (methodRaw == "boxfill") "boxfill" else "aot"
+    fun mapInpaintMethod(methodRaw: String): String = when (methodRaw) {
+        "boxfill" -> "boxfill"
+        "migan" -> "migan"
+        "lama" -> "lama"
+        else -> "aot"
+    }
 
     /**
      * 用 [prefs] 組出完整 [EngineConfig]（偵測/OCR/翻譯/去字/排版）。
@@ -61,6 +66,9 @@ object EngineConfigMapping {
             temperature = temperature,
             // 思考模式（預設關）：欄位形狀 per-provider，由引擎 LlmProviders.requestParams 映射。
             thinking = prefs.thinking.get(),
+            // 實驗（fork）：詞彙表（開關開＋內容非空才送；關＝空字串＝引擎不附）＋塞不下改短重翻。
+            glossary = if (prefs.glossaryEnabled.get()) prefs.glossaryText.get() else "",
+            fitRetranslate = prefs.fitRetranslate.get(),
         )
         if (target != TranslationPreferences.DEFAULT_TARGET_LANG) {
             translatorCfg = translatorCfg.copy(sampleSource = "", sampleTarget = "")
@@ -90,6 +98,8 @@ object EngineConfigMapping {
                 ocrUnsharp = prefs.ocrUnsharp.get(),
                 concurrent = true,
                 concurrency = ocrConcurrency,
+                // 實驗（fork）：弱行二次 OCR（裁出 2× 放大重讀），預設關。
+                secondPass = prefs.ocrSecondPass.get(),
                 // 阿拉伯文 OCR 後端（fork）：來源＝阿拉伯文＋偏好選 paddle 才走 PaddleOCR，其餘一律主路徑。
                 engine = if (prefs.sourceLangName.get() == "Arabic" && prefs.arabicOcrEngine.get() == "paddle") {
                     "paddle"
@@ -132,6 +142,13 @@ object EngineConfigMapping {
         fontScale = parseFloat(prefs.fontScale.get(), 0.3f, 1.5f, 0.85f),
         // 進階排版：縱中橫（直排短 ASCII 串水平並排，預設開）。
         tateChuYoko = prefs.tateChuYoko.get(),
+        // 實驗（fork）：比對原文字級／原文顏色，預設關。
+        matchTextSize = prefs.matchTextSize.get(),
+        matchTextColor = prefs.matchTextColor.get(),
+        // 實驗（fork）：去字不回貼（被過濾的文字、多為 SFX，只去字不重貼原文），預設關。
+        eraseUntranslated = prefs.eraseUntranslated.get(),
+        // 實驗（fork）：防撕詞（橫排只在空白處斷行、不切詞），預設關。
+        noWordTear = prefs.noWordTear.get(),
     )
 
     /**
@@ -150,6 +167,9 @@ object EngineConfigMapping {
         prefs.apiBase.get(),
         prefs.temperature.get(),
         prefs.thinking.get().toString(), // 思考模式（per-provider 參數映射）→ 換了要重建才會套用
+        prefs.glossaryEnabled.get().toString(), // 實驗：詞彙表開關
+        prefs.glossaryText.get(), // 實驗：詞彙表內容（改了要重建才會進 prompt）
+        prefs.fitRetranslate.get().toString(), // 實驗：塞不下改短重翻
         prefs.targetLangName.get(), // 也決定要不要清掉引擎內建 few-shot
         prefs.sourceLangName.get(),
         // —— 偵測（DetectorConfig）——
@@ -163,6 +183,7 @@ object EngineConfigMapping {
         prefs.useBicubic.get(),
         prefs.ocrUnsharp.get().toString(),
         prefs.ocrConcurrency.get(),
+        prefs.ocrSecondPass.get().toString(), // 實驗：弱行二次 OCR
         prefs.arabicOcrEngine.get(), // 阿拉伯文 OCR 後端（與 sourceLangName 一起決定 OcrConfig.engine）
         // —— 去字（InpainterConfig）——
         prefs.bboxPad.get(),
@@ -179,6 +200,10 @@ object EngineConfigMapping {
         prefs.rowTrim.get(),
         prefs.fontScale.get(),
         prefs.tateChuYoko.get().toString(),
+        prefs.matchTextSize.get().toString(), // 實驗：比對原文字級
+        prefs.matchTextColor.get().toString(), // 實驗：比對原文顏色
+        prefs.eraseUntranslated.get().toString(), // 實驗：去字不回貼（SFX）
+        prefs.noWordTear.get().toString(), // 實驗：防撕詞
         // 譯文字型（不進 EngineConfig、由 TranslationEngineService 讀出 Typeface 傳 create，同 apiKey 的通道；
         // 仍須進簽章，改了才會重建引擎套用新字型）
         prefs.translationFont.get(),

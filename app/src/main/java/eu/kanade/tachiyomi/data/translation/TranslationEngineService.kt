@@ -98,6 +98,13 @@ class TranslationEngineService(private val context: Context) {
         val resId = when (translationPreferences.translationFont.get()) {
             TranslationPreferences.FONT_CAIRO -> R.font.cairo
             TranslationPreferences.FONT_TAJAWAL -> R.font.tajawal
+            TranslationPreferences.FONT_ALMARAI -> R.font.almarai
+            TranslationPreferences.FONT_JF_FLAT -> R.font.jf_flat
+            TranslationPreferences.FONT_AMIRI -> R.font.amiri
+            TranslationPreferences.FONT_MANGA_TEMPLE -> R.font.manga_temple
+            TranslationPreferences.FONT_KOMIKA_TEXT -> R.font.komika_text
+            TranslationPreferences.FONT_BALOO_BHAIJAAN_2 -> R.font.baloo_bhaijaan_2
+            TranslationPreferences.FONT_KOMIKA_AXIS -> R.font.komika_axis
             else -> return null
         }
         return runCatching { ResourcesCompat.getFont(context, resId) }.getOrNull()

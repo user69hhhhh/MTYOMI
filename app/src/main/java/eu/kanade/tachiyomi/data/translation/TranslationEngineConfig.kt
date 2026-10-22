@@ -47,6 +47,16 @@ object TranslationEngineConfig {
     private const val ARABIC_DICT_ASSET = "models/arabic_dict.txt"
     private const val PADDLE_KEYWORD = "paddle"
 
+    /** MI-GAN 去字包在 APK assets 的路徑（28MB fp32；[ensureMiganAssets] 複製進下載區，與 PaddleOCR 同模式）。 */
+    private const val MIGAN_PARAM_ASSET = "models/migan_inpaint.ncnn.param"
+    private const val MIGAN_BIN_ASSET = "models/migan_inpaint.ncnn.bin"
+
+    /** MI-GAN 去字的檔名關鍵字（`migan_inpaint.ncnn.param`；fork 選配，缺了引擎退回 AOT-GAN [OG]）。 */
+    private const val MIGAN_KEYWORD = "migan"
+
+    /** LaMa 去字 ONNX 的檔名關鍵字（`lama_fp32.onnx`；走 ONNX Runtime，fork 選配）。 */
+    private const val LAMA_KEYWORD = "lama"
+
     /**
      * OCR 角色 base `.param` 的檔名關鍵字（`ocr_48px_ctc.ncnn.param`，manifest models-v4）。
      * ★ 刻意含 `.ncnn`、不能只寫 `ocr`：同目錄還有 `ocr_48px_ctc_mixed.ncnn.param`（混合精度、共用同一份 `.bin`），
@@ -324,13 +334,19 @@ object TranslationEngineConfig {
         // 阿拉伯文 PaddleOCR（fork 內建、選配）：assets 先落地到下載區再照一般路徑解析；失敗/缺檔＝null，主 OCR 不受影響。
         runCatching { ensurePaddleAssets(context) }
         val paddle = runCatching { resolveNcnnRole(context, saf, PADDLE_KEYWORD) }.getOrNull()
+        // MI-GAN 去字（fork）：模型包在 APK assets、先複製進下載區再照一般 NCNN 路徑解析（與 PaddleOCR 同模式；
+        // 管理員同步剪除未知檔案也沒關係，下次解析會再複製回來）。解析不到＝null，引擎退回 AOT-GAN [OG]。
+        runCatching { ensureMiganAssets(context) }
+        val migan = runCatching { resolveNcnnRole(context, saf, MIGAN_KEYWORD) }.getOrNull()
+        // LaMa 去字（fork 選配、ONNX Runtime）：找 `.onnx`（下載區或 SAF 複製進 filesDir）；缺＝null，同樣退回 AOT。
+        val lamaOnnx = runCatching { resolveLamaOnnx(context, saf) }.getOrNull()
         val paddleAlphabet = runCatching {
             context.assets.open(ARABIC_DICT_ASSET).bufferedReader().use { it.readLines() }
         }.getOrDefault(emptyList())
         // 夜讀人物分割（ModelSet.charSegYoloNcnn/charSegCsegNcnn）刻意留 null：翻譯引擎用不到，
         // 不讓每次建引擎都為選配模型付 SAF 複製（BYOM 最多 ~147MB）；夜讀端自己走 resolveCharSegModels。
         return ModelSetBundle(
-            ModelSet(ocr = ocr, detectorNcnn = detNcnn, aotInpainterNcnn = aotNcnn, ocrPaddleArabic = paddle),
+            ModelSet(ocr = ocr, detectorNcnn = detNcnn, aotInpainterNcnn = aotNcnn, ocrPaddleArabic = paddle, miganInpainterNcnn = migan, lamaInpaintOnnx = lamaOnnx),
             alphabet,
             paddleAlphabet,
         )
@@ -352,6 +368,45 @@ object TranslationEngineConfig {
             context.assets.open(asset).use { input -> tmp.outputStream().use { input.copyTo(it, 1 shl 16) } }
             tmp.renameTo(out)
         }
+    }
+
+    /** 把 APK assets 的 MI-GAN `.param`/`.bin` 複製進自動下載區（已存在且長度相符就跳過；與 [ensurePaddleAssets] 同法）。 */
+    private fun ensureMiganAssets(context: Context) {
+        val dir = downloadedDir(context).apply { mkdirs() }
+        for (asset in listOf(MIGAN_PARAM_ASSET, MIGAN_BIN_ASSET)) {
+            val out = File(dir, asset.substringAfterLast('/'))
+            if (out.exists() && out.length() > 0) {
+                val assetLen = runCatching { context.assets.openFd(asset).use { it.length } }.getOrNull()
+                if (assetLen == null || assetLen == out.length()) continue
+            }
+            val tmp = File(dir, out.name + ".tmp")
+            context.assets.open(asset).use { input -> tmp.outputStream().use { input.copyTo(it, 1 shl 16) } }
+            tmp.renameTo(out)
+        }
+    }
+
+    /** fork 託管的 LaMa ONNX 直下連結（MTYOMI-engine GitHub release `models` 的 asset；app 內下載用）。 */
+    const val LAMA_ONNX_URL =
+        "https://github.com/user69hhhhh/MTYOMI-engine/releases/download/models/lama_fp32.onnx"
+
+    /** LaMa ONNX 的正規大小（下載後驗證用；不符視為壞檔）。 */
+    const val LAMA_ONNX_SIZE = 208_044_816L
+
+    /**
+     * app 內下載的 LaMa 落點：`filesDir/extra_models/`——刻意在自動下載區（`filesDir/models`）之外，
+     * 因為 [ModelDownloadManager] 會 prune 掉 manifest 外的檔案，放下載區會被下一次模型下載清掉。
+     */
+    fun lamaExtraFile(context: Context): File = File(File(context.filesDir, "extra_models"), "lama_fp32.onnx")
+
+    /** LaMa 模型是否就緒（app 內下載／自動下載區／SAF BYOM 任一處有）。 */
+    fun lamaModelPresent(context: Context): Boolean = resolveLamaOnnx(context, modelsDir(context)) != null
+
+    /** 解析 LaMa ONNX → 本機路徑：app 內下載區 → 自動下載區 → SAF BYOM（[ensureLocal] 複製）。缺回 null。 */
+    private fun resolveLamaOnnx(context: Context, saf: UniFile?): String? {
+        lamaExtraFile(context).takeIf { it.isFile && it.length() > 0 }?.let { return it.absolutePath }
+        downloadedModel(context, ".onnx", LAMA_KEYWORD)?.let { return it.absolutePath }
+        val onnxU = saf?.let { findModel(it, ".onnx", LAMA_KEYWORD) } ?: return null
+        return ensureLocal(context, onnxU)
     }
 
     /**

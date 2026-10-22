@@ -127,10 +127,34 @@ class TranslationPreferences(
      */
     val translationFont = preferenceStore.getString("translation_font", FONT_DEFAULT)
 
+    /** 實驗：比對原文字級（引擎 RenderConfig.matchTextSize；fork 新增）。譯文字級跟著偵測到的原文 glyph 尺寸走、只縮不放大。預設關。 */
+    val matchTextSize = preferenceStore.getBoolean("translation_match_text_size", false)
+
+    /** 實驗：比對原文顏色（引擎 RenderConfig.matchTextColor；fork 新增）。譯文填色用去字前取樣的原文字色。預設關。 */
+    val matchTextColor = preferenceStore.getBoolean("translation_match_text_color", false)
+
+    /** 實驗：章節詞彙表開關（引擎 TranslatorConfig.glossary；fork 新增）。開＋有內容才把詞彙表附進 LLM system prompt。預設關。 */
+    val glossaryEnabled = preferenceStore.getBoolean("translation_glossary_enabled", false)
+
+    /** 實驗：詞彙表內容（一行一條「原文 = 譯文」純文字，使用者在設定頁編輯）。 */
+    val glossaryText = preferenceStore.getString("translation_glossary", "")
+
+    /** 實驗：弱行二次 OCR（引擎 OcrConfig.secondPass；fork 新增）。讀不到字/低分短讀的行裁出 2× 放大再讀一次。預設關。 */
+    val ocrSecondPass = preferenceStore.getBoolean("translation_ocr_second_pass", false)
+
+    /** 實驗：去字不回貼（引擎 RenderConfig.eraseUntranslated；fork 新增）。被過濾的文字（多為 SFX）只去字、不重貼原文。預設關。 */
+    val eraseUntranslated = preferenceStore.getBoolean("translation_erase_untranslated", false)
+
+    /** 實驗：防撕詞（引擎 RenderConfig.noWordTear；fork 新增）。橫排換行只在空白處斷行、不把詞切成兩行。預設關。 */
+    val noWordTear = preferenceStore.getBoolean("translation_no_word_tear", false)
+
+    /** 實驗：譯文塞不下時改短重翻（引擎 TranslatorConfig.fitRetranslate；fork 新增）。溢出區向 LLM 重翻一版更短的。預設關。 */
+    val fitRetranslate = preferenceStore.getBoolean("translation_fit_retranslate", false)
+
     /** 排版方向（auto/vertical/horizontal），對應引擎 RenderConfig.orientation。 */
     val orientation = preferenceStore.getString("translation_orientation", DEFAULT_ORIENTATION)
 
-    /** 去字方法（boxfill=快速去字／其餘=AI 去字 aot），對應引擎 InpainterConfig。用於下載時翻譯/手動翻譯/重繪。 */
+    /** 去字方法（boxfill=快速去字／lama=LaMa 高品質／其餘=AI 去字 aot [OG]），對應引擎 InpainterConfig。用於下載時翻譯/手動翻譯/重繪。 */
     val inpaintMethod = preferenceStore.getString("translation_inpaint_method", DEFAULT_INPAINT_METHOD)
 
     /**
@@ -272,8 +296,8 @@ class TranslationPreferences(
     /** 整頁 AOT 去字解析度（512/768/1024，甜蜜點 768）；對應引擎 InpainterConfig.tileSize。存 Int，只三檔有意義。 */
     val tileSize = preferenceStore.getInt("translation_tile_size", 768)
 
-    /** 去字遮罩膨脹（值/2＝半徑 px，實測 24）；對應引擎 InpainterConfig.maskDilate（Float）。存 Int，8–40。調小會殘白塊。 */
-    val maskDilate = preferenceStore.getInt("translation_mask_dilate", 24)
+    /** 去字遮罩膨脹（值/2＝半徑 px；fork 由 24 加大到 30 消殘影）；對應引擎 InpainterConfig.maskDilate（Float）。存 Int，8–40。調小會殘白塊。 */
+    val maskDilate = preferenceStore.getInt("translation_mask_dilate", 30)
 
     /** 縱中橫：直排時把連續短 ASCII 串水平並排一格（預設開）；對應引擎 RenderConfig.tateChuYoko。 */
     val tateChuYoko = preferenceStore.getBoolean("translation_tate_chu_yoko", true)
@@ -305,9 +329,16 @@ class TranslationPreferences(
         const val DEFAULT_OCR_CONCURRENCY = "auto" // auto=硬體核數（多數手機8核）；真機 8.9s→4.8s 快46%
         const val DEFAULT_COLOR_MODE = "auto" // auto=依背景亮度判黑/白字
         const val DEFAULT_ARABIC_OCR_ENGINE = "default" // default=內建 CTC；paddle=PaddleOCR 阿拉伯文（僅來源=阿拉伯文時生效）
-        const val FONT_DEFAULT = "default" // 譯文字型：default=系統預設；cairo/tajawal=內建字型（res/font）
+        const val FONT_DEFAULT = "default" // 譯文字型：default=系統預設；其餘=內建字型（res/font）
         const val FONT_CAIRO = "cairo"
         const val FONT_TAJAWAL = "tajawal"
+        const val FONT_ALMARAI = "almarai"
+        const val FONT_JF_FLAT = "jf_flat"
+        const val FONT_AMIRI = "amiri"
+        const val FONT_MANGA_TEMPLE = "manga_temple"
+        const val FONT_KOMIKA_TEXT = "komika_text"
+        const val FONT_BALOO_BHAIJAAN_2 = "baloo_bhaijaan_2" // 圓潤漫畫風（阿拉伯掃譯圈最常用的一款；變量字型釘死 ExtraBold 靜態實例）
+        const val FONT_KOMIKA_AXIS = "komika_axis" // 手繪 SFX 風（Komika 家族；狀聲詞/喊叫字用）
     }
 }
 

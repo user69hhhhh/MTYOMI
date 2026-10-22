@@ -1430,6 +1430,7 @@
     <string name="pref_translation_group_models">Models</string>
     <string name="pref_translation_group_inpaint">Text removal</string>
     <string name="pref_translation_group_typeset">Typesetting</string>
+    <string name="pref_translation_group_experimental">Experimental</string>
     <string name="pref_translation_group_performance">Performance (device-dependent)</string>
     <string name="pref_translation_group_recognition">Recognition (detection / OCR)</string>
     <string name="pref_translation_group_live">Live translation</string>
@@ -1476,7 +1477,7 @@
     <string name="pref_translation_model_status_outdated">⚠️ Old-format models detected — translation is off until you update. The v2 engine needs the NCNN model set: tap “Update models” below to re-download.</string>
     <string name="pref_translation_download_models">Download models</string>
     <string name="pref_translation_update_models">Update models</string>
-    <string name="pref_translation_download_models_idle">Auto-download the models (~250 MB) from the release + sha256 verify</string>
+    <string name="pref_translation_download_models_idle">Auto-download all models (~458 MB, incl. LaMa) from the releases + sha256 verify</string>
     <string name="pref_translation_download_models_done">Download complete</string>
     <string name="pref_translation_download_models_error">Failed: %s (tap to retry)</string>
     <string name="pref_translation_target_lang">Target language</string>
@@ -1500,6 +1501,27 @@
     <string name="pref_translation_font">Translation font</string>
     <string name="pref_translation_font_default">Default</string>
     <string name="pref_translation_font_sample">Heroes never give up! الأبطال لا يستسلمون أبداً 123</string>
+    <string name="pref_translation_match_text_size">Match original text size</string>
+    <string name="pref_translation_match_text_size_summary">Render the translation at the same size as the original text. Longer translations may shrink to fit.</string>
+    <string name="pref_translation_match_text_color">Match original text color</string>
+    <string name="pref_translation_match_text_color_summary">Render the translation in the same color as the original text.</string>
+    <string name="pref_translation_glossary">Chapter glossary</string>
+    <string name="pref_translation_glossary_summary">Feed your own name/term list to the AI with every translation, so names stay spelled the same across chapters.</string>
+    <string name="pref_translation_glossary_entries">Glossary entries</string>
+    <string name="pref_translation_glossary_entries_summary">One entry per line: original = translation (for example: ナルト = Naruto). Used when the glossary switch is on.</string>
+    <string name="pref_translation_ocr_second_pass">Second-pass OCR for weak lines</string>
+    <string name="pref_translation_ocr_second_pass_summary">Lines the OCR reads weakly or not at all are re-scanned zoomed in at 2×. Slower, but fewer missed bubbles — helps small text and Arabic dots.</string>
+    <string name="pref_translation_erase_untranslated">Erase untranslated text (SFX)</string>
+    <string name="pref_translation_erase_untranslated_summary">Text the translator leaves unchanged — mostly sound effects — is erased instead of pasted back in the original language. Real dialogue that gets filtered by mistake is erased too.</string>
+    <string name="pref_translation_no_word_tear">Prevent word tearing</string>
+    <string name="pref_translation_no_word_tear_summary">Never split a word across two lines — lines break only at spaces, and the text shrinks to fit instead. For Arabic and other space-separated languages; Japanese/Chinese are unaffected.</string>
+    <string name="pref_translation_fit_retranslate">Shorter retranslation when text won't fit</string>
+    <string name="pref_translation_fit_retranslate_summary">If a translation still doesn't fit its bubble at the smallest text size, the AI is asked for a shorter version and the page is re-rendered. Costs one extra AI request per affected page.</string>
+    <string name="pref_translation_lama_model">LaMa model (max quality erase)</string>
+    <string name="pref_translation_lama_model_missing">Not downloaded — tap to download (208 MB)</string>
+    <string name="pref_translation_lama_model_present">Downloaded ✓</string>
+    <string name="pref_translation_inpaint_migan">MI-GAN (balanced)</string>
+    <string name="pref_translation_inpaint_lama">LaMa (max quality)</string>
     <string name="pref_translation_font_border">Text outline</string>
     <string name="pref_translation_font_border_summary">An outline makes text on busy backgrounds easier to read</string>
     <string name="pref_translation_ocr_concurrency">OCR concurrency</string>
@@ -1566,7 +1588,7 @@
     <string name="model_dl_failed">Unknown error</string>
     <string name="model_dl_notif_title">Downloading models %d%%</string>
     <string name="model_dl_notif_done">Models downloaded</string>
-    <string name="model_dl_notif_done_text">All 3 models are ready</string>
+    <string name="model_dl_notif_done_text">All 4 models are ready</string>
     <string name="model_dl_notif_failed">Model download failed</string>
     <!-- Yakuyomi: notification channel names (Downloader group) -->
     <string name="channel_translation_progress">Translation &amp; night reading</string>

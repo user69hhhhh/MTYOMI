@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -149,6 +150,7 @@ object SettingsTranslationScreen : SearchableSettings {
         val modelDownloadManager = remember { Injekt.get<ModelDownloadManager>() }
         val modelDownloadState by modelDownloadManager.state.collectAsState()
         val filesRevision by modelDownloadManager.filesRevision.collectAsState()
+
         // 翻譯組下載完 / 刪除後重算（Done 是 data class、每次新物件；delete 後回 Idle 也會觸發）。
         val modelsJustDownloaded = modelDownloadState
         val modelPresence by produceState<List<TranslationEngineConfig.RolePresence>?>(
@@ -248,6 +250,37 @@ object SettingsTranslationScreen : SearchableSettings {
                 confirmButton = {
                     TextButton(onClick = { showPrivacyDialog = false }) {
                         Text(text = stringResource(MR.strings.action_ok))
+                    }
+                },
+            )
+        }
+        // 實驗：章節詞彙表編輯（多行；內建 EditTextPreference 是單行＋不可空白，不合用，故自刻對話框）。
+        var showGlossaryDialog by remember { mutableStateOf(false) }
+        if (showGlossaryDialog) {
+            var glossaryDraft by remember { mutableStateOf(prefs.glossaryText.get()) }
+            AlertDialog(
+                onDismissRequest = { showGlossaryDialog = false },
+                title = { Text(text = stringResource(MR.strings.pref_translation_glossary_entries)) },
+                text = {
+                    OutlinedTextField(
+                        value = glossaryDraft,
+                        onValueChange = { glossaryDraft = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 4,
+                        maxLines = 10,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            prefs.glossaryText.set(glossaryDraft)
+                            showGlossaryDialog = false
+                        },
+                    ) { Text(text = stringResource(MR.strings.action_ok)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showGlossaryDialog = false }) {
+                        Text(text = stringResource(MR.strings.action_cancel))
                     }
                 },
             )
@@ -468,9 +501,11 @@ object SettingsTranslationScreen : SearchableSettings {
                     Preference.PreferenceItem.ListPreference(
                         preference = prefs.inpaintMethod,
                         entries = persistentMapOf(
-                            // 2 門別（快速去字 / AI 去字）；auto_tile（逐格）已退役，stored auto_whole 仍選中
+                            // AOT-GAN [OG]（stored 值 auto_whole）／MI-GAN balanced／LaMa max quality／boxfill 快速
+                            "auto_whole" to stringResource(MR.strings.pref_translation_inpaint_auto_whole) + " [OG]",
+                            "migan" to stringResource(MR.strings.pref_translation_inpaint_migan),
+                            "lama" to stringResource(MR.strings.pref_translation_inpaint_lama),
                             "boxfill" to stringResource(MR.strings.pref_translation_inpaint_boxfill),
-                            "auto_whole" to stringResource(MR.strings.pref_translation_inpaint_auto_whole),
                         ),
                         title = stringResource(MR.strings.pref_translation_inpaint_method),
                         onValueChanged = { _ ->
@@ -488,8 +523,10 @@ object SettingsTranslationScreen : SearchableSettings {
                     Preference.PreferenceItem.ListPreference(
                         preference = prefs.liveInpaintMethod,
                         entries = persistentMapOf(
+                            "auto_whole" to stringResource(MR.strings.pref_translation_inpaint_auto_whole) + " [OG]",
+                            "migan" to stringResource(MR.strings.pref_translation_inpaint_migan),
+                            "lama" to stringResource(MR.strings.pref_translation_inpaint_lama),
                             "boxfill" to stringResource(MR.strings.pref_translation_inpaint_boxfill),
-                            "auto_whole" to stringResource(MR.strings.pref_translation_inpaint_auto_whole),
                         ),
                         title = stringResource(MR.strings.pref_translation_live_inpaint_method),
                         subtitle = stringResource(MR.strings.pref_translation_live_inpaint_summary),
@@ -723,6 +760,13 @@ object SettingsTranslationScreen : SearchableSettings {
                     ) {
                         val cairoFamily = remember { FontFamily(Font(R.font.cairo)) }
                         val tajawalFamily = remember { FontFamily(Font(R.font.tajawal)) }
+                        val almaraiFamily = remember { FontFamily(Font(R.font.almarai)) }
+                        val jfFlatFamily = remember { FontFamily(Font(R.font.jf_flat)) }
+                        val amiriFamily = remember { FontFamily(Font(R.font.amiri)) }
+                        val mangaTempleFamily = remember { FontFamily(Font(R.font.manga_temple)) }
+                        val komikaTextFamily = remember { FontFamily(Font(R.font.komika_text)) }
+                        val balooBhaijaan2Family = remember { FontFamily(Font(R.font.baloo_bhaijaan_2)) }
+                        val komikaAxisFamily = remember { FontFamily(Font(R.font.komika_axis)) }
                         val choices = listOf(
                             Triple(
                                 TranslationPreferences.FONT_DEFAULT,
@@ -731,6 +775,13 @@ object SettingsTranslationScreen : SearchableSettings {
                             ),
                             Triple(TranslationPreferences.FONT_CAIRO, "Cairo", cairoFamily),
                             Triple(TranslationPreferences.FONT_TAJAWAL, "Tajawal", tajawalFamily),
+                            Triple(TranslationPreferences.FONT_ALMARAI, "Almarai", almaraiFamily),
+                            Triple(TranslationPreferences.FONT_JF_FLAT, "JF Flat", jfFlatFamily),
+                            Triple(TranslationPreferences.FONT_AMIRI, "Amiri", amiriFamily),
+                            Triple(TranslationPreferences.FONT_MANGA_TEMPLE, "Manga Temple", mangaTempleFamily),
+                            Triple(TranslationPreferences.FONT_KOMIKA_TEXT, "Komika Text", komikaTextFamily),
+                            Triple(TranslationPreferences.FONT_BALOO_BHAIJAAN_2, "Baloo Bhaijaan 2", balooBhaijaan2Family),
+                            Triple(TranslationPreferences.FONT_KOMIKA_AXIS, "Komika Axis", komikaAxisFamily),
                         )
                         Column {
                             choices.forEach { (value, label, family) ->
@@ -765,6 +816,7 @@ object SettingsTranslationScreen : SearchableSettings {
                             }
                         }
                     },
+                    // （比對原文字級／顏色兩實驗開關已搬到下方「實驗」組。）
                     // 文字顏色 / 描邊收進進階：一般使用者用預設 auto + 描邊即可。
                     Preference.PreferenceItem.ListPreference(
                         preference = prefs.colorMode,
@@ -855,6 +907,74 @@ object SettingsTranslationScreen : SearchableSettings {
                         stringResource(MR.strings.pref_translation_font_scale),
                         stringResource(MR.strings.pref_translation_font_scale_desc) + curSuffix,
                         advBadge,
+                    ),
+                ).toImmutableList(),
+            ),
+            // —— 實驗（fork）——（排版之後；全部預設關、各自獨立）
+            Preference.PreferenceGroup(
+                title = stringResource(MR.strings.pref_translation_group_experimental),
+                preferenceItems = listOfNotNull<Item>(
+                    // 比對原文（自排版組搬來）：譯文字級／顏色跟著原文走（引擎 RenderConfig.matchTextSize/matchTextColor）。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.matchTextSize,
+                        title = stringResource(MR.strings.pref_translation_match_text_size),
+                        subtitle = stringResource(MR.strings.pref_translation_match_text_size_summary),
+                        onValueChanged = { _ ->
+                            if (prefs.translationMasterEnabled.get() &&
+                                (prefs.translationEnabled.get() || prefs.liveTranslate.get())
+                            ) {
+                                pendingRenderUpdate = RenderUpdateKind.LAYOUT
+                            }
+                            true
+                        },
+                    ),
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.matchTextColor,
+                        title = stringResource(MR.strings.pref_translation_match_text_color),
+                        subtitle = stringResource(MR.strings.pref_translation_match_text_color_summary),
+                        onValueChanged = { _ ->
+                            if (prefs.translationMasterEnabled.get() &&
+                                (prefs.translationEnabled.get() || prefs.liveTranslate.get())
+                            ) {
+                                pendingRenderUpdate = RenderUpdateKind.LAYOUT
+                            }
+                            true
+                        },
+                    ),
+                    // 章節詞彙表：開關 + 條目編輯（多行對話框；內容進 LLM system prompt、人名/術語跨章一致）。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.glossaryEnabled,
+                        title = stringResource(MR.strings.pref_translation_glossary),
+                        subtitle = stringResource(MR.strings.pref_translation_glossary_summary),
+                    ),
+                    Preference.PreferenceItem.TextPreference(
+                        title = stringResource(MR.strings.pref_translation_glossary_entries),
+                        subtitle = stringResource(MR.strings.pref_translation_glossary_entries_summary),
+                        onClick = { showGlossaryDialog = true },
+                    ),
+                    // 弱行二次 OCR：讀不到字/低分短讀的行，裁出 2× 放大再讀一次。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.ocrSecondPass,
+                        title = stringResource(MR.strings.pref_translation_ocr_second_pass),
+                        subtitle = stringResource(MR.strings.pref_translation_ocr_second_pass_summary),
+                    ),
+                    // 去字不回貼：被過濾的文字（多為 SFX）只去字、不重貼原文。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.eraseUntranslated,
+                        title = stringResource(MR.strings.pref_translation_erase_untranslated),
+                        subtitle = stringResource(MR.strings.pref_translation_erase_untranslated_summary),
+                    ),
+                    // 塞不下改短重翻：溢出區向 LLM 重翻一版更短的、重排一次。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.fitRetranslate,
+                        title = stringResource(MR.strings.pref_translation_fit_retranslate),
+                        subtitle = stringResource(MR.strings.pref_translation_fit_retranslate_summary),
+                    ),
+                    // 防撕詞：橫排只在空白處斷行、絕不把一個詞切成兩行。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.noWordTear,
+                        title = stringResource(MR.strings.pref_translation_no_word_tear),
+                        subtitle = stringResource(MR.strings.pref_translation_no_word_tear_summary),
                     ),
                 ).toImmutableList(),
             ),

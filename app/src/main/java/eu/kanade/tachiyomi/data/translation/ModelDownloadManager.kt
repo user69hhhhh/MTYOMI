@@ -21,8 +21,11 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.io.File
 import java.net.ConnectException
+import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
+import java.net.URL
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 
@@ -76,6 +79,87 @@ class ModelDownloadManager(private val context: Context) {
             is Running -> this.group == group
             is Done -> this.group == group
             is Error -> this.group == group
+        }
+    }
+
+    /** LaMa 模型下載狀態（fork 選配；來源與落點都跟 manifest 組不同，獨立一份狀態）。 */
+    sealed interface LamaState {
+        data object Idle : LamaState
+        data class Running(val label: String, val percent: Int) : LamaState
+        data object Done : LamaState
+        data class Error(val message: String) : LamaState
+    }
+
+    private val _lamaState = MutableStateFlow<LamaState>(LamaState.Idle)
+    val lamaState: StateFlow<LamaState> = _lamaState.asStateFlow()
+
+    /**
+     * 下載 LaMa ONNX（fork 託管的直下連結）到 [TranslationEngineConfig.lamaExtraFile]
+     * （`filesDir/extra_models/`——在自動下載區外，本類的 manifest prune 碰不到）。
+     * 已存在且大小正確直接 Done；下載後驗大小，壞檔不落地。成功落地後釋放 warm 引擎（同 [download] 的理由：
+     * 模型路徑不在 configSignature 裡，warm 引擎不會自己發現新檔）。
+     */
+    fun downloadLama() {
+        if (_lamaState.value is LamaState.Running) return
+        _lamaState.value = LamaState.Running(context.stringResource(MR.strings.model_dl_preparing), 0)
+        scope.launch {
+            try {
+                val out = TranslationEngineConfig.lamaExtraFile(context)
+                out.parentFile?.mkdirs()
+                if (out.isFile && out.length() == TranslationEngineConfig.LAMA_ONNX_SIZE) {
+                    _lamaState.value = LamaState.Done
+                    return@launch
+                }
+                val tmp = File(out.parentFile, out.name + ".tmp")
+                val conn = (URL(TranslationEngineConfig.LAMA_ONNX_URL).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 30_000
+                    readTimeout = 60_000
+                    instanceFollowRedirects = true
+                }
+                conn.inputStream.use { input ->
+                    tmp.outputStream().use { output ->
+                        val buf = ByteArray(1 shl 16)
+                        var read = 0L
+                        var lastPct = -1
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            output.write(buf, 0, n)
+                            read += n
+                            val pct = (read * 100 / TranslationEngineConfig.LAMA_ONNX_SIZE)
+                                .toInt().coerceIn(0, 100)
+                            if (pct != lastPct) {
+                                lastPct = pct
+                                val label = context.stringResource(MR.strings.model_dl_downloading, out.name)
+                                _lamaState.value = LamaState.Running(label, pct)
+                                notify(
+                                    context.stringResource(MR.strings.model_dl_notif_title, pct),
+                                    label,
+                                    ongoing = true,
+                                    percent = pct,
+                                )
+                            }
+                        }
+                    }
+                }
+                check(tmp.length() == TranslationEngineConfig.LAMA_ONNX_SIZE) {
+                    "LaMa 大小不符：${tmp.length()} != ${TranslationEngineConfig.LAMA_ONNX_SIZE}"
+                }
+                check(tmp.renameTo(out)) { "LaMa 落地 rename 失敗" }
+                _filesRevision.value++
+                _lamaState.value = LamaState.Done
+                notify(
+                    context.stringResource(MR.strings.model_dl_notif_done),
+                    context.stringResource(MR.strings.model_dl_notif_done_text),
+                    ongoing = false,
+                )
+                engineService.shutdownAsync()
+            } catch (t: Throwable) {
+                logcat(LogPriority.ERROR, t) { "LaMa 模型下載失敗：${t.message}" }
+                val msg = localizedError(t)
+                _lamaState.value = LamaState.Error(msg)
+                notify(context.stringResource(MR.strings.model_dl_notif_failed), msg, ongoing = false)
+            }
         }
     }
 
@@ -159,6 +243,9 @@ class ModelDownloadManager(private val context: Context) {
                 // 只在真有新檔落地（或清掉殘留）且是翻譯組時做——夜讀組的 CharSegmenter 不由此服務持有，
                 // 換新檔後由夜讀端下次建構時自然載到（偵測器若在夜讀組被更新，翻譯引擎沿用舊檔到下次釋放；可接受）。
                 if (modelsChanged && group == ModelGroup.TRANSLATION) engineService.shutdownAsync()
+                // fork：翻譯組下載完成後順手把 LaMa 也下掉——「下載翻譯模型」一次按鍵全模型到齊（含選配的
+                // max quality 去字）。已存在且大小正確時 downloadLama 會直接 Done，不重抓；失敗只影響它自己那列。
+                if (group == ModelGroup.TRANSLATION) downloadLama()
             } catch (t: Throwable) {
                 // 原始例外訊息只進 logcat：引擎的 sha256 訊息是中文、OkHttp／JSON 的是英文，直接上畫面（設定頁副標＋
                 // 失敗通知）會跟介面語言對不上。畫面用 [localizedError] 的分類文字，判斷不中就退回通用的「下載失敗」。
