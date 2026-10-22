@@ -23,15 +23,11 @@ MTYOMI is a [mihon](https://github.com/mihonapp/mihon) fork that translates mang
 
 See [README_zh.md](README_zh.md) for the full feature guide (translation, night reading, capture, reader, library, browse).
 
-## Download
-
-Grab the latest **signed APK** from the [Releases page](https://github.com/joyeli/Yakuyomi/releases/latest). Most phones want `arm64-v8a`; use `universal` if unsure.
-
 ## Building
 
 ```sh
-git clone --recurse-submodules https://github.com/joyeli/Yakuyomi.git
-cd Yakuyomi
+git clone --recurse-submodules https://github.com/user69hhhhh/MTYOMI.git
+cd MTYOMI
 ./gradlew :app:assembleDebug
 ```
 
