@@ -8,7 +8,7 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-0877d2?labelColor=27303D)](LICENSE-YAKUYOMI.md)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-0877d2?labelColor=27303D)](LICENSE-MTYOMI.md)
 [![Release](https://img.shields.io/github/v/release/joyeli/Yakuyomi?include_prereleases&label=Download&labelColor=27303D)](https://github.com/joyeli/Yakuyomi/releases/latest)
 
 </div>
@@ -35,4 +35,4 @@ The engine is wired in via Gradle composite build (`includeBuild`). It compiles 
 
 ## License
 
-**GPL-3.0** — see [LICENSE-YAKUYOMI.md](LICENSE-YAKUYOMI.md).
+**GPL-3.0** — see [LICENSE-MTYOMI.md](LICENSE-MTYOMI.md).
