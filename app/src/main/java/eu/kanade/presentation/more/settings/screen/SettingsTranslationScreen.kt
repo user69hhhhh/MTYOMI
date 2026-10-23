@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -149,6 +150,8 @@ object SettingsTranslationScreen : SearchableSettings {
         // 模型自動下載 + 狀態（下載完才重算 modelPresence）。
         val modelDownloadManager = remember { Injekt.get<ModelDownloadManager>() }
         val modelDownloadState by modelDownloadManager.state.collectAsState()
+        val pickerState by modelDownloadManager.pickerState.collectAsState()
+        var showModelDownloadPicker by remember { mutableStateOf(false) }
         val filesRevision by modelDownloadManager.filesRevision.collectAsState()
 
         // 翻譯組下載完 / 刪除後重算（Done 是 data class、每次新物件；delete 後回 Idle 也會觸發）。
@@ -280,6 +283,88 @@ object SettingsTranslationScreen : SearchableSettings {
                 },
                 dismissButton = {
                     TextButton(onClick = { showGlossaryDialog = false }) {
+                        Text(text = stringResource(MR.strings.action_cancel))
+                    }
+                },
+            )
+        }
+        // 下載模型選單（fork）：勾選要下的模型（翻譯組／LaMa／PP-OCRv6 small／medium），進度走通知＋本頁副標。
+        if (showModelDownloadPicker) {
+            var selected by remember { mutableStateOf<Set<ModelDownloadManager.DownloadItem>>(emptySet()) }
+            var presence by remember { mutableStateOf<Map<ModelDownloadManager.DownloadItem, Boolean>>(emptyMap()) }
+            LaunchedEffect(showModelDownloadPicker, filesRevision) {
+                presence = withContext(Dispatchers.IO) {
+                    mapOf(
+                        ModelDownloadManager.DownloadItem.TRANSLATION to TranslationEngineConfig.modelsResolvable(context),
+                        ModelDownloadManager.DownloadItem.LAMA to TranslationEngineConfig.lamaModelPresent(context),
+                        ModelDownloadManager.DownloadItem.V6_SMALL to TranslationEngineConfig.v6SmallPresent(context),
+                        ModelDownloadManager.DownloadItem.V6_MEDIUM to TranslationEngineConfig.v6MediumPresent(context),
+                    )
+                }
+                // 預設只勾還沒下載的（已下載的可再勾＝補檔／重抓）。
+                selected = presence.filterValues { !it }.keys
+            }
+            val pickerItems = listOf(
+                Triple(
+                    ModelDownloadManager.DownloadItem.TRANSLATION,
+                    stringResource(MR.strings.model_picker_item_translation),
+                    "~247 MB",
+                ),
+                Triple(
+                    ModelDownloadManager.DownloadItem.LAMA,
+                    stringResource(MR.strings.model_picker_item_lama),
+                    "208 MB",
+                ),
+                Triple(
+                    ModelDownloadManager.DownloadItem.V6_SMALL,
+                    stringResource(MR.strings.model_picker_item_v6_small),
+                    "10.6 MB",
+                ),
+                Triple(
+                    ModelDownloadManager.DownloadItem.V6_MEDIUM,
+                    stringResource(MR.strings.model_picker_item_v6_medium),
+                    "76.5 MB",
+                ),
+            )
+            AlertDialog(
+                onDismissRequest = { showModelDownloadPicker = false },
+                title = { Text(text = stringResource(MR.strings.model_picker_title)) },
+                text = {
+                    Column {
+                        pickerItems.forEach { (item, label, size) ->
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = item in selected,
+                                    onCheckedChange = { checked ->
+                                        selected = if (checked) selected + item else selected - item
+                                    },
+                                )
+                                Column {
+                                    Text(text = label)
+                                    Text(
+                                        text = if (presence[item] == true) {
+                                            stringResource(MR.strings.model_picker_downloaded) + " · " + size
+                                        } else {
+                                            size
+                                        },
+                                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = selected.isNotEmpty(),
+                        onClick = {
+                            modelDownloadManager.downloadSelected(selected)
+                            showModelDownloadPicker = false
+                        },
+                    ) { Text(text = stringResource(MR.strings.model_picker_download)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showModelDownloadPicker = false }) {
                         Text(text = stringResource(MR.strings.action_cancel))
                     }
                 },
@@ -681,6 +766,22 @@ object SettingsTranslationScreen : SearchableSettings {
                         subtitle = stringResource(MR.strings.pref_translation_arabic_ocr_engine_subtitle),
                         subtitleProvider = { _, _ -> stringResource(MR.strings.pref_translation_arabic_ocr_engine_subtitle) },
                     ).takeIf { sourceLang == "Arabic" },
+                    // 日／中 OCR 後端（fork）：只在來源＝日文或中文（簡／繁）時出現。default＝內建 48px CTC；
+                    // v6＝PP-OCRv6（單一模型讀日＋簡繁中，模型在「下載模型」選單裡抓，未下載時自動退回 default）。
+                    Preference.PreferenceItem.ListPreference(
+                        preference = prefs.cjkOcrEngine,
+                        entries = persistentMapOf(
+                            "default" to stringResource(MR.strings.pref_translation_ocr_engine_default),
+                            "v6_small" to stringResource(MR.strings.pref_translation_ocr_engine_v6_small),
+                            "v6_medium" to stringResource(MR.strings.pref_translation_ocr_engine_v6_medium),
+                        ),
+                        title = stringResource(MR.strings.pref_translation_cjk_ocr_engine),
+                        subtitle = stringResource(MR.strings.pref_translation_cjk_ocr_engine_subtitle),
+                        subtitleProvider = { _, _ -> stringResource(MR.strings.pref_translation_cjk_ocr_engine_subtitle) },
+                    ).takeIf {
+                        sourceLang == "Japanese" || sourceLang == "Simplified Chinese" ||
+                            sourceLang.startsWith("Traditional Chinese")
+                    },
                 ).toImmutableList(),
             ),
             // —— 模型 ——
@@ -699,8 +800,16 @@ object SettingsTranslationScreen : SearchableSettings {
                                 MR.strings.pref_translation_download_models
                             },
                         ),
-                        // 只顯示翻譯組的進度／結果；夜讀組在下載時這裡標「另一組下載中」（同一資料夾不並行）。
-                        subtitle = when (val s = modelDownloadState) {
+                        // 選單下載（pickerState）優先顯示；其次是翻譯組自己的進度／結果；夜讀組在下載時這裡標
+                        // 「另一組下載中」（同一資料夾不並行）。
+                        subtitle = when (val p = pickerState) {
+                            is ModelDownloadManager.PickerState.Running ->
+                                stringResource(MR.strings.model_dl_progress_subtitle, p.label, p.percent)
+                            is ModelDownloadManager.PickerState.Done ->
+                                stringResource(MR.strings.pref_translation_download_models_done)
+                            is ModelDownloadManager.PickerState.Error ->
+                                stringResource(MR.strings.pref_translation_download_models_error, p.message)
+                            ModelDownloadManager.PickerState.Idle -> when (val s = modelDownloadState) {
                             is ModelDownloadManager.State.Running ->
                                 if (s.group == TranslationEngineConfig.ModelGroup.TRANSLATION) {
                                     stringResource(MR.strings.model_dl_progress_subtitle, s.label, s.percent)
@@ -721,8 +830,9 @@ object SettingsTranslationScreen : SearchableSettings {
                                 }
                             ModelDownloadManager.State.Idle ->
                                 stringResource(MR.strings.pref_translation_download_models_idle)
+                            }
                         },
-                        onClick = { modelDownloadManager.download(TranslationEngineConfig.ModelGroup.TRANSLATION) },
+                        onClick = { showModelDownloadPicker = true },
                     ),
                     // 刪翻譯組（OCR＋去字；偵測器只在夜讀組沒裝時一起刪）。夜讀組在 設定 › 夜讀 各刪各的。
                     Preference.PreferenceItem.TextPreference(

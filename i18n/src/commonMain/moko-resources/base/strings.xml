@@ -1477,7 +1477,14 @@
     <string name="pref_translation_model_status_outdated">⚠️ Old-format models detected — translation is off until you update. The v2 engine needs the NCNN model set: tap “Update models” below to re-download.</string>
     <string name="pref_translation_download_models">Download models</string>
     <string name="pref_translation_update_models">Update models</string>
-    <string name="pref_translation_download_models_idle">Auto-download all models (~458 MB, incl. LaMa) from the releases + sha256 verify</string>
+    <string name="pref_translation_download_models_idle">Choose which models to download (translation set, LaMa, PP-OCRv6) — sizes shown in the picker</string>
+    <string name="model_picker_title">Download models</string>
+    <string name="model_picker_item_translation">Translation models (detector, OCR, inpainting)</string>
+    <string name="model_picker_item_lama">LaMa inpainting model (max quality text removal)</string>
+    <string name="model_picker_item_v6_small">PP-OCRv6 Small — Japanese/Chinese OCR</string>
+    <string name="model_picker_item_v6_medium">PP-OCRv6 Medium — Japanese/Chinese OCR, best quality</string>
+    <string name="model_picker_downloaded">Downloaded</string>
+    <string name="model_picker_download">Download</string>
     <string name="pref_translation_download_models_done">Download complete</string>
     <string name="pref_translation_download_models_error">Failed: %s (tap to retry)</string>
     <string name="pref_translation_target_lang">Target language</string>
@@ -1486,6 +1493,10 @@
     <string name="pref_translation_arabic_ocr_engine_subtitle">The default engine was not trained on Arabic and cannot read it. PaddleOCR uses the built-in Arabic model.</string>
     <string name="pref_translation_ocr_engine_default">Default</string>
     <string name="pref_translation_ocr_engine_paddle">PaddleOCR</string>
+    <string name="pref_translation_cjk_ocr_engine">Japanese/Chinese OCR engine</string>
+    <string name="pref_translation_cjk_ocr_engine_subtitle">PP-OCRv6 reads Japanese and Chinese (simplified + traditional) with one stronger model. Needs the v6 model from Download models — without it the default engine is used.</string>
+    <string name="pref_translation_ocr_engine_v6_small">PP-OCRv6 Small (10 MB)</string>
+    <string name="pref_translation_ocr_engine_v6_medium">PP-OCRv6 Medium (76 MB)</string>
     <string name="pref_translation_render_update_title">Update translated chapters</string>
     <string name="pref_translation_render_update_upgrade">Text-removal method changed. Re-render all translated chapters with the current settings? It only upgrades removal quality, never downgrades (keeps the best result); loose downloaded chapters with saved materials only.</string>
     <string name="pref_translation_render_update_layout">Typesetting changed. Re-render all translated chapters with the new layout? Each keeps its own removal method, only the layout changes; loose downloaded chapters with saved materials only.</string>
@@ -1588,7 +1599,7 @@
     <string name="model_dl_failed">Unknown error</string>
     <string name="model_dl_notif_title">Downloading models %d%%</string>
     <string name="model_dl_notif_done">Models downloaded</string>
-    <string name="model_dl_notif_done_text">All 4 models are ready</string>
+    <string name="model_dl_notif_done_text">Selected models are ready</string>
     <string name="model_dl_notif_failed">Model download failed</string>
     <!-- Yakuyomi: notification channel names (Downloader group) -->
     <string name="channel_translation_progress">Translation &amp; night reading</string>

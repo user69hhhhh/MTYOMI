@@ -100,11 +100,18 @@ object EngineConfigMapping {
                 concurrency = ocrConcurrency,
                 // 實驗（fork）：弱行二次 OCR（裁出 2× 放大重讀），預設關。
                 secondPass = prefs.ocrSecondPass.get(),
-                // 阿拉伯文 OCR 後端（fork）：來源＝阿拉伯文＋偏好選 paddle 才走 PaddleOCR，其餘一律主路徑。
-                engine = if (prefs.sourceLangName.get() == "Arabic" && prefs.arabicOcrEngine.get() == "paddle") {
-                    "paddle"
-                } else {
-                    "default"
+                // OCR 後端（fork）：來源＝阿拉伯文＋偏好選 paddle → PaddleOCR 阿拉伯文；
+                // 來源＝日文／中文＋偏好選 v6_small／v6_medium → PP-OCRv6（模型未下載時引擎自動退回主路徑）；
+                // 其餘一律主路徑。
+                engine = run {
+                    val src = prefs.sourceLangName.get()
+                    val cjkSource = src == "Japanese" || src == "Simplified Chinese" || src.startsWith("Traditional Chinese")
+                    when {
+                        src == "Arabic" && prefs.arabicOcrEngine.get() == "paddle" -> "paddle"
+                        cjkSource && prefs.cjkOcrEngine.get() == "v6_small" -> "paddle_v6_small"
+                        cjkSource && prefs.cjkOcrEngine.get() == "v6_medium" -> "paddle_v6_medium"
+                        else -> "default"
+                    }
                 },
             ),
             translator = translatorCfg,
@@ -185,6 +192,7 @@ object EngineConfigMapping {
         prefs.ocrConcurrency.get(),
         prefs.ocrSecondPass.get().toString(), // 實驗：弱行二次 OCR
         prefs.arabicOcrEngine.get(), // 阿拉伯文 OCR 後端（與 sourceLangName 一起決定 OcrConfig.engine）
+        prefs.cjkOcrEngine.get(), // 日／中 OCR 後端（同上）
         // —— 去字（InpainterConfig）——
         prefs.bboxPad.get(),
         prefs.tileSize.get().toString(),

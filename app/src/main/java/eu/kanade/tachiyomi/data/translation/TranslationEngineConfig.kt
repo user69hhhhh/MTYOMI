@@ -87,6 +87,7 @@ object TranslationEngineConfig {
         val models: ModelSet,
         val alphabet: List<String>,
         val paddleAlphabet: List<String> = emptyList(),
+        val paddleV6Alphabet: List<String> = emptyList(),
     )
 
     /**
@@ -343,12 +344,18 @@ object TranslationEngineConfig {
         val paddleAlphabet = runCatching {
             context.assets.open(ARABIC_DICT_ASSET).bufferedReader().use { it.readLines() }
         }.getOrDefault(emptyList())
+        // PP-OCRv6 日／中 OCR（fork 選配、下載型）：extra_models 裡 param+bin+字典齊全才解析（缺＝null，
+        // 引擎退回主 OCR）；字典 small/medium 共用一份。
+        val v6Small = runCatching { resolvePaddleV6(context, medium = false) }.getOrNull()
+        val v6Medium = runCatching { resolvePaddleV6(context, medium = true) }.getOrNull()
+        val paddleV6Alphabet = if (v6Small != null || v6Medium != null) readPaddleV6Alphabet(context) else emptyList()
         // 夜讀人物分割（ModelSet.charSegYoloNcnn/charSegCsegNcnn）刻意留 null：翻譯引擎用不到，
         // 不讓每次建引擎都為選配模型付 SAF 複製（BYOM 最多 ~147MB）；夜讀端自己走 resolveCharSegModels。
         return ModelSetBundle(
-            ModelSet(ocr = ocr, detectorNcnn = detNcnn, aotInpainterNcnn = aotNcnn, ocrPaddleArabic = paddle, miganInpainterNcnn = migan, lamaInpaintOnnx = lamaOnnx),
+            ModelSet(ocr = ocr, detectorNcnn = detNcnn, aotInpainterNcnn = aotNcnn, ocrPaddleArabic = paddle, miganInpainterNcnn = migan, lamaInpaintOnnx = lamaOnnx, ocrPaddleV6Small = v6Small, ocrPaddleV6Medium = v6Medium),
             alphabet,
             paddleAlphabet,
+            paddleV6Alphabet,
         )
     }
 
@@ -391,6 +398,59 @@ object TranslationEngineConfig {
 
     /** LaMa ONNX 的正規大小（下載後驗證用；不符視為壞檔）。 */
     const val LAMA_ONNX_SIZE = 208_044_816L
+
+    /**
+     * PP-OCRv6 日／中 OCR（fork 選配、下載型）：與 LaMa 同一個 release `models` 的 asset 檔名與正規大小
+     * （small 的 `.bin` 是 fp16 儲存 10.6MB；medium 的 fp16 實測輸出 NaN → fp32 76.5MB；字典兩版共用）。
+     * 下載走 [ModelDownloadManager] 的選單，落點同 LaMa 的 extra_models（見 [extraFile]）。
+     */
+    const val V6_SMALL_PARAM_NAME = "ppocrv6_small_rec.ncnn.param"
+    const val V6_SMALL_BIN_NAME = "ppocrv6_small_rec.ncnn.bin"
+    const val V6_MEDIUM_PARAM_NAME = "ppocrv6_medium_rec.ncnn.param"
+    const val V6_MEDIUM_BIN_NAME = "ppocrv6_medium_rec.ncnn.bin"
+    const val V6_DICT_NAME = "ppocrv6_dict.txt"
+    const val V6_SMALL_PARAM_SIZE = 13_852L
+    const val V6_SMALL_BIN_SIZE = 10_562_152L
+    const val V6_MEDIUM_PARAM_SIZE = 14_875L
+    const val V6_MEDIUM_BIN_SIZE = 76_454_040L
+    const val V6_DICT_SIZE = 74_946L
+
+    /** fork 託管模型 release 的 asset 基底網址（LaMa 與 PP-OCRv6 的直下連結共用）。 */
+    const val MODELS_RELEASE_BASE = "https://github.com/user69hhhhh/MTYOMI-engine/releases/download/models/"
+
+    /** 下載型選配模型的家：`filesDir/extra_models/`（在自動下載區外，manifest prune 碰不到）。 */
+    fun extraModelsDir(context: Context): File = File(context.filesDir, "extra_models")
+
+    /** extra_models 裡的某個檔（不保證存在）。 */
+    fun extraFile(context: Context, name: String): File = File(extraModelsDir(context), name)
+
+    /** extra_models 裡的檔存在且大小正確才回傳（下載完整性的單一判準）。 */
+    fun extraFileOk(context: Context, name: String, size: Long): File? =
+        extraFile(context, name).takeIf { it.isFile && it.length() == size }
+
+    /** PP-OCRv6 small 是否就緒（param＋bin＋共用字典，大小都對）。 */
+    fun v6SmallPresent(context: Context): Boolean =
+        extraFileOk(context, V6_SMALL_PARAM_NAME, V6_SMALL_PARAM_SIZE) != null &&
+            extraFileOk(context, V6_SMALL_BIN_NAME, V6_SMALL_BIN_SIZE) != null &&
+            extraFileOk(context, V6_DICT_NAME, V6_DICT_SIZE) != null
+
+    /** PP-OCRv6 medium 是否就緒（同 [v6SmallPresent]）。 */
+    fun v6MediumPresent(context: Context): Boolean =
+        extraFileOk(context, V6_MEDIUM_PARAM_NAME, V6_MEDIUM_PARAM_SIZE) != null &&
+            extraFileOk(context, V6_MEDIUM_BIN_NAME, V6_MEDIUM_BIN_SIZE) != null &&
+            extraFileOk(context, V6_DICT_NAME, V6_DICT_SIZE) != null
+
+    /** 解析 PP-OCRv6 `.param` 路徑（該版 param+bin+字典齊全才給；缺回 null，引擎退回主 OCR）。 */
+    fun resolvePaddleV6(context: Context, medium: Boolean): String? {
+        val ok = if (medium) v6MediumPresent(context) else v6SmallPresent(context)
+        if (!ok) return null
+        return extraFile(context, if (medium) V6_MEDIUM_PARAM_NAME else V6_SMALL_PARAM_NAME).absolutePath
+    }
+
+    /** 讀 PP-OCRv6 字典（18,708 行；small/medium 共用）。缺檔或壞檔回空清單（引擎據此退回主 OCR）。 */
+    fun readPaddleV6Alphabet(context: Context): List<String> = runCatching {
+        extraFileOk(context, V6_DICT_NAME, V6_DICT_SIZE)?.bufferedReader()?.use { it.readLines() } ?: emptyList()
+    }.getOrDefault(emptyList())
 
     /**
      * app 內下載的 LaMa 落點：`filesDir/extra_models/`——刻意在自動下載區（`filesDir/models`）之外，

@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.data.translation.TranslationEngineConfig.ModelGroup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,6 +93,178 @@ class ModelDownloadManager(private val context: Context) {
 
     private val _lamaState = MutableStateFlow<LamaState>(LamaState.Idle)
     val lamaState: StateFlow<LamaState> = _lamaState.asStateFlow()
+
+    /** 「下載模型」選單的一個可勾選項（fork：由使用者選要下什麼，不再一次全下）。 */
+    enum class DownloadItem { TRANSLATION, LAMA, V6_SMALL, V6_MEDIUM }
+
+    /** 選單下載的整體狀態（各分項各有自己的 state；這裡是給設定頁顯示的彙總，逐項鏡射正在跑的那項）。 */
+    sealed interface PickerState {
+        data object Idle : PickerState
+        data class Running(val label: String, val percent: Int) : PickerState
+        data object Done : PickerState
+        data class Error(val message: String) : PickerState
+    }
+
+    private val _pickerState = MutableStateFlow<PickerState>(PickerState.Idle)
+    val pickerState: StateFlow<PickerState> = _pickerState.asStateFlow()
+
+    /** PP-OCRv6 模型下載狀態（fork 選配；落點 extra_models，與 LaMa 同模式、獨立一份狀態）。 */
+    sealed interface V6State {
+        data object Idle : V6State
+        data class Running(val label: String, val percent: Int) : V6State
+        data object Done : V6State
+        data class Error(val message: String) : V6State
+    }
+
+    private val _v6State = MutableStateFlow<V6State>(V6State.Idle)
+    val v6State: StateFlow<V6State> = _v6State.asStateFlow()
+
+    /**
+     * 選單下載：依使用者勾選依序下（翻譯組 → LaMa → PP-OCRv6），一次只跑一項、共用同一條進度通知。
+     * 任一項已在跑就忽略。某一項失敗就停（後面多半同一個網路問題），錯誤進 [PickerState.Error]。
+     * 各分項的下載本體沿用既有路徑（[download]／[downloadLama]／[downloadV6]），進度通知由它們各自發；
+     * 這裡只負責串接＋把正在跑那項的 label/percent 鏡射到 [pickerState] 給設定頁顯示。
+     */
+    fun downloadSelected(items: Set<DownloadItem>) {
+        if (items.isEmpty()) return
+        if (_pickerState.value is PickerState.Running) return
+        if (_state.value is State.Running || _lamaState.value is LamaState.Running || _v6State.value is V6State.Running) return
+        _pickerState.value = PickerState.Running(context.stringResource(MR.strings.model_dl_preparing), 0)
+        scope.launch {
+            var error: String? = null
+            val mirror = launch {
+                while (true) {
+                    val p = when (val s = _state.value) {
+                        is State.Running -> PickerState.Running(s.label, s.percent)
+                        else -> when (val l = _lamaState.value) {
+                            is LamaState.Running -> PickerState.Running(l.label, l.percent)
+                            else -> when (val v = _v6State.value) {
+                                is V6State.Running -> PickerState.Running(v.label, v.percent)
+                                else -> null
+                            }
+                        }
+                    }
+                    if (p != null) _pickerState.value = p
+                    delay(300)
+                }
+            }
+            try {
+                if (DownloadItem.TRANSLATION in items) {
+                    download(ModelGroup.TRANSLATION)
+                    while (_state.value is State.Running) delay(300)
+                    (_state.value as? State.Error)?.let { error = it.message }
+                }
+                if (error == null && DownloadItem.LAMA in items) {
+                    downloadLama()
+                    while (_lamaState.value is LamaState.Running) delay(300)
+                    (_lamaState.value as? LamaState.Error)?.let { error = it.message }
+                }
+                if (error == null && (DownloadItem.V6_SMALL in items || DownloadItem.V6_MEDIUM in items)) {
+                    downloadV6(DownloadItem.V6_SMALL in items, DownloadItem.V6_MEDIUM in items)
+                    while (_v6State.value is V6State.Running) delay(300)
+                    (_v6State.value as? V6State.Error)?.let { error = it.message }
+                }
+            } finally {
+                mirror.cancel()
+            }
+            _pickerState.value = if (error != null) {
+                PickerState.Error(error!!)
+            } else {
+                PickerState.Done
+            }
+        }
+    }
+
+    /** 一個 extra_models 直下檔的規格（檔名＋正規大小；網址由檔名拼 [TranslationEngineConfig.MODELS_RELEASE_BASE]）。 */
+    private data class ExtraFileSpec(val name: String, val size: Long)
+
+    /**
+     * 下載 PP-OCRv6 模型（small／medium 的 `.param`＋`.bin`＋共用字典）到 extra_models。
+     * 已存在且大小正確的檔跳過；逐檔驗大小、壞檔不落地；進度同時進 [v6State] 與通知。
+     * 全部落地後釋放 warm 引擎（同 [downloadLama] 的理由）。
+     */
+    fun downloadV6(includeSmall: Boolean, includeMedium: Boolean) {
+        if (_v6State.value is V6State.Running) return
+        _v6State.value = V6State.Running(context.stringResource(MR.strings.model_dl_preparing), 0)
+        scope.launch {
+            try {
+                val dir = TranslationEngineConfig.extraModelsDir(context).apply { mkdirs() }
+                val specs = buildList {
+                    if (includeSmall) {
+                        add(ExtraFileSpec(TranslationEngineConfig.V6_SMALL_PARAM_NAME, TranslationEngineConfig.V6_SMALL_PARAM_SIZE))
+                        add(ExtraFileSpec(TranslationEngineConfig.V6_SMALL_BIN_NAME, TranslationEngineConfig.V6_SMALL_BIN_SIZE))
+                    }
+                    if (includeMedium) {
+                        add(ExtraFileSpec(TranslationEngineConfig.V6_MEDIUM_PARAM_NAME, TranslationEngineConfig.V6_MEDIUM_PARAM_SIZE))
+                        add(ExtraFileSpec(TranslationEngineConfig.V6_MEDIUM_BIN_NAME, TranslationEngineConfig.V6_MEDIUM_BIN_SIZE))
+                    }
+                    if (includeSmall || includeMedium) {
+                        add(ExtraFileSpec(TranslationEngineConfig.V6_DICT_NAME, TranslationEngineConfig.V6_DICT_SIZE))
+                    }
+                }
+                val todo = specs.filter { TranslationEngineConfig.extraFileOk(context, it.name, it.size) == null }
+                if (todo.isEmpty()) {
+                    _v6State.value = V6State.Done
+                    return@launch
+                }
+                val total = todo.sumOf { it.size }.coerceAtLeast(1)
+                var doneBytes = 0L
+                for (spec in todo) {
+                    downloadExtraFile(spec, dir) { read ->
+                        val pct = ((doneBytes + read) * 100 / total).toInt().coerceIn(0, 100)
+                        val label = context.stringResource(MR.strings.model_dl_downloading, spec.name)
+                        _v6State.value = V6State.Running(label, pct)
+                        notify(
+                            context.stringResource(MR.strings.model_dl_notif_title, pct),
+                            label,
+                            ongoing = true,
+                            percent = pct,
+                        )
+                    }
+                    doneBytes += spec.size
+                }
+                _filesRevision.value++
+                _v6State.value = V6State.Done
+                notify(
+                    context.stringResource(MR.strings.model_dl_notif_done),
+                    context.stringResource(MR.strings.model_dl_notif_done_text),
+                    ongoing = false,
+                )
+                engineService.shutdownAsync()
+            } catch (t: Throwable) {
+                logcat(LogPriority.ERROR, t) { "PP-OCRv6 模型下載失敗：${t.message}" }
+                val msg = localizedError(t)
+                _v6State.value = V6State.Error(msg)
+                notify(context.stringResource(MR.strings.model_dl_notif_failed), msg, ongoing = false)
+            }
+        }
+    }
+
+    /** 直下一個 extra_models 檔：串流寫 tmp → 驗大小 → rename 落地（[onBytes] 回報已讀位元組數）。 */
+    private fun downloadExtraFile(spec: ExtraFileSpec, dir: File, onBytes: (Long) -> Unit) {
+        val out = File(dir, spec.name)
+        val tmp = File(dir, spec.name + ".tmp")
+        val conn = (URL(TranslationEngineConfig.MODELS_RELEASE_BASE + spec.name).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 30_000
+            readTimeout = 60_000
+            instanceFollowRedirects = true
+        }
+        conn.inputStream.use { input ->
+            tmp.outputStream().use { output ->
+                val buf = ByteArray(1 shl 16)
+                var read = 0L
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    output.write(buf, 0, n)
+                    read += n
+                    onBytes(read)
+                }
+            }
+        }
+        check(tmp.length() == spec.size) { "${spec.name} 大小不符：${tmp.length()} != ${spec.size}" }
+        check(tmp.renameTo(out)) { "${spec.name} 落地 rename 失敗" }
+    }
 
     /**
      * 下載 LaMa ONNX（fork 託管的直下連結）到 [TranslationEngineConfig.lamaExtraFile]
@@ -243,9 +416,7 @@ class ModelDownloadManager(private val context: Context) {
                 // 只在真有新檔落地（或清掉殘留）且是翻譯組時做——夜讀組的 CharSegmenter 不由此服務持有，
                 // 換新檔後由夜讀端下次建構時自然載到（偵測器若在夜讀組被更新，翻譯引擎沿用舊檔到下次釋放；可接受）。
                 if (modelsChanged && group == ModelGroup.TRANSLATION) engineService.shutdownAsync()
-                // fork：翻譯組下載完成後順手把 LaMa 也下掉——「下載翻譯模型」一次按鍵全模型到齊（含選配的
-                // max quality 去字）。已存在且大小正確時 downloadLama 會直接 Done，不重抓；失敗只影響它自己那列。
-                if (group == ModelGroup.TRANSLATION) downloadLama()
+                // fork：LaMa／PP-OCRv6 改走「下載模型」選單（[downloadSelected]）由使用者勾選，不再自動連帶下載。
             } catch (t: Throwable) {
                 // 原始例外訊息只進 logcat：引擎的 sha256 訊息是中文、OkHttp／JSON 的是英文，直接上畫面（設定頁副標＋
                 // 失敗通知）會跟介面語言對不上。畫面用 [localizedError] 的分類文字，判斷不中就退回通用的「下載失敗」。

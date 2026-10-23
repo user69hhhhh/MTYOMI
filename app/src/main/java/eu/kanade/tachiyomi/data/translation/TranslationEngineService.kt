@@ -235,6 +235,7 @@ class TranslationEngineService(private val context: Context) {
                 cfg,
                 typeface = translationTypeface(),
                 paddleAlphabet = bundle.paddleAlphabet,
+                paddleV6Alphabet = bundle.paddleV6Alphabet,
             )
             TraceLog.log("svc", "ensureEngine.create.done")
             engine = built

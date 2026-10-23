@@ -120,6 +120,14 @@ class TranslationPreferences(
     val arabicOcrEngine = preferenceStore.getString("translation_arabic_ocr_engine", DEFAULT_ARABIC_OCR_ENGINE)
 
     /**
+     * 日／中 OCR 後端（`default`／`v6_small`／`v6_medium`；fork 新增）。只在來源語言＝日文或中文（簡／繁）時有意義：
+     * `default`＝內建 48px CTC；`v6_small`／`v6_medium`＝PaddleOCR PP-OCRv6（單一模型讀日文＋簡繁中文，
+     * 模型由「下載模型」選單抓到 extra_models、未下載時引擎自動退回 default）。
+     * 對應引擎 OcrConfig.engine 的 "paddle_v6_small"／"paddle_v6_medium"。
+     */
+    val cjkOcrEngine = preferenceStore.getString("translation_cjk_ocr_engine", DEFAULT_CJK_OCR_ENGINE)
+
+    /**
      * 翻譯排版字型（`default`／`cairo`／`tajawal`；fork 新增）：決定譯文畫進氣泡時用的字型。
      * `default`＝引擎系統預設；cairo/tajawal＝app 內建字型（res/font，阿拉伯文掃譯圈最常用兩款、附設定頁預覽）。
      * 不進 EngineConfig——由 [TranslationEngineService] 讀出 Typeface 傳給 `Yakuyomi.create`（同 apiKey 的通道）；
@@ -329,6 +337,7 @@ class TranslationPreferences(
         const val DEFAULT_OCR_CONCURRENCY = "auto" // auto=硬體核數（多數手機8核）；真機 8.9s→4.8s 快46%
         const val DEFAULT_COLOR_MODE = "auto" // auto=依背景亮度判黑/白字
         const val DEFAULT_ARABIC_OCR_ENGINE = "default" // default=內建 CTC；paddle=PaddleOCR 阿拉伯文（僅來源=阿拉伯文時生效）
+        const val DEFAULT_CJK_OCR_ENGINE = "default" // default=內建 CTC；v6_small/v6_medium=PP-OCRv6（僅來源=日文/中文時生效）
         const val FONT_DEFAULT = "default" // 譯文字型：default=系統預設；其餘=內建字型（res/font）
         const val FONT_CAIRO = "cairo"
         const val FONT_TAJAWAL = "tajawal"
