@@ -141,6 +141,7 @@ class MangaScreen(
             onChapterClicked = { openChapter(context, it) },
             onDownloadChapter = viewModel::runChapterDownloadActions.takeIf { !successState.source.isLocalOrStub() },
             onTranslateChapter = viewModel::runChapterTranslateAction.takeIf { translationMasterEnabled },
+            onDeleteTranslationChapter = viewModel::runChapterDeleteTranslationAction.takeIf { translationMasterEnabled },
             onReRenderChapter = viewModel::runChapterReRenderAction.takeIf { translationMasterEnabled },
             onNightRenderChapter = viewModel::runChapterNightRenderAction.takeIf { nightAffordance },
             nightReadEnabled = nightAffordance,

@@ -105,6 +105,9 @@ class TranslationEngineService(private val context: Context) {
             TranslationPreferences.FONT_KOMIKA_TEXT -> R.font.komika_text
             TranslationPreferences.FONT_BALOO_BHAIJAAN_2 -> R.font.baloo_bhaijaan_2
             TranslationPreferences.FONT_KOMIKA_AXIS -> R.font.komika_axis
+            TranslationPreferences.FONT_MARHEY -> R.font.marhey
+            TranslationPreferences.FONT_MADA -> R.font.mada
+            TranslationPreferences.FONT_LALEZAR -> R.font.lalezar
             else -> return null
         }
         return runCatching { ResourcesCompat.getFont(context, resId) }.getOrNull()
@@ -227,6 +230,14 @@ class TranslationEngineService(private val context: Context) {
             val bundle = TranslationEngineConfig.resolveModelSet(context) ?: return null
             // 去字法照呼叫端傳入（佇列逐章帶來的去字法），其餘參數（語言/緒數/排版…）照使用者設定。
             val cfg = TranslationEngineConfig.buildEngineConfig(translationPreferences, methodRaw)
+                .let { c ->
+                    // [MTYOMI] 噪聲過濾開時，把 SCOWL 詞表填進 config（mapping 無 Context 可讀 assets）。
+                    if (c.ocr.noiseFilter && bundle.noiseWords.isNotEmpty()) {
+                        c.copy(ocr = c.ocr.copy(noiseWords = bundle.noiseWords))
+                    } else {
+                        c
+                    }
+                }
             TraceLog.log("svc", "ensureEngine.create.start")
             val built = Yakuyomi.create(
                 bundle.models,

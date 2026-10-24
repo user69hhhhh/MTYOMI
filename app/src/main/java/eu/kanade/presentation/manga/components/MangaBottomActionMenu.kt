@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.Backspace
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.BookmarkRemove
 import androidx.compose.material.icons.outlined.DarkMode
@@ -84,6 +85,7 @@ fun MangaBottomActionMenu(
     nightReadEnabled: Boolean = true, // 夜讀表層開關：關 → 月亮鈕隱藏（即使呼叫端給了 onNightRenderClicked）
     onDownloadClicked: (() -> Unit)? = null,
     onDeleteClicked: (() -> Unit)? = null,
+    onDeleteTranslationClicked: (() -> Unit)? = null,
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -98,7 +100,7 @@ fun MangaBottomActionMenu(
         ) {
             val haptic = LocalHapticFeedback.current
             val confirm = remember {
-                mutableStateListOf(false, false, false, false, false, false, false, false, false, false)
+                mutableStateListOf(false, false, false, false, false, false, false, false, false, false, false)
             }
             var resetJob by remember { mutableStateOf<Job?>(null) }
             val onLongClickItem: (Int) -> Unit = { toConfirmIndex ->
@@ -209,6 +211,16 @@ fun MangaBottomActionMenu(
                         toConfirm = confirm[7],
                         onLongClick = { onLongClickItem(7) },
                         onClick = onDeleteClicked,
+                    )
+                }
+                if (onDeleteTranslationClicked != null) {
+                    // [MTYOMI] 刪除翻譯：還原保留的原圖、清掉翻譯狀態（與刪下載的 Delete 區分圖示）
+                    Button(
+                        title = stringResource(MR.strings.action_delete_translation),
+                        icon = Icons.Outlined.Backspace,
+                        toConfirm = confirm[10],
+                        onLongClick = { onLongClickItem(10) },
+                        onClick = onDeleteTranslationClicked,
                     )
                 }
             }

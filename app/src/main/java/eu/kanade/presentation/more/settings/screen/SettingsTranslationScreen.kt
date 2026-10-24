@@ -877,6 +877,9 @@ object SettingsTranslationScreen : SearchableSettings {
                         val komikaTextFamily = remember { FontFamily(Font(R.font.komika_text)) }
                         val balooBhaijaan2Family = remember { FontFamily(Font(R.font.baloo_bhaijaan_2)) }
                         val komikaAxisFamily = remember { FontFamily(Font(R.font.komika_axis)) }
+                        val marheyFamily = remember { FontFamily(Font(R.font.marhey)) }
+                        val madaFamily = remember { FontFamily(Font(R.font.mada)) }
+                        val lalezarFamily = remember { FontFamily(Font(R.font.lalezar)) }
                         val choices = listOf(
                             Triple(
                                 TranslationPreferences.FONT_DEFAULT,
@@ -892,6 +895,9 @@ object SettingsTranslationScreen : SearchableSettings {
                             Triple(TranslationPreferences.FONT_KOMIKA_TEXT, "Komika Text", komikaTextFamily),
                             Triple(TranslationPreferences.FONT_BALOO_BHAIJAAN_2, "Baloo Bhaijaan 2", balooBhaijaan2Family),
                             Triple(TranslationPreferences.FONT_KOMIKA_AXIS, "Komika Axis", komikaAxisFamily),
+                            Triple(TranslationPreferences.FONT_MARHEY, "Marhey", marheyFamily),
+                            Triple(TranslationPreferences.FONT_MADA, "Mada", madaFamily),
+                            Triple(TranslationPreferences.FONT_LALEZAR, "Lalezar", lalezarFamily),
                         )
                         Column {
                             choices.forEach { (value, label, family) ->
@@ -1073,6 +1079,12 @@ object SettingsTranslationScreen : SearchableSettings {
                         preference = prefs.eraseUntranslated,
                         title = stringResource(MR.strings.pref_translation_erase_untranslated),
                         subtitle = stringResource(MR.strings.pref_translation_erase_untranslated_summary),
+                    ),
+                    // [MTYOMI] SCOWL 噪聲過濾：無真英文詞的 OCR 區在翻譯前整區丟棄（仿 xpmanga）。
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = prefs.noiseFilter,
+                        title = stringResource(MR.strings.pref_translation_noise_filter),
+                        subtitle = stringResource(MR.strings.pref_translation_noise_filter_summary),
                     ),
                     // 塞不下改短重翻：溢出區向 LLM 重翻一版更短的、重排一次。
                     Preference.PreferenceItem.SwitchPreference(

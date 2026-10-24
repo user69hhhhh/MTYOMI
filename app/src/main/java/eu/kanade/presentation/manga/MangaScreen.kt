@@ -103,6 +103,7 @@ fun MangaScreen(
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onTranslateChapter: ((List<ChapterList.Item>) -> Unit)?,
+    onDeleteTranslationChapter: ((List<ChapterList.Item>) -> Unit)? = null,
     onReRenderChapter: ((List<ChapterList.Item>, String) -> Unit)?,
     onNightRenderChapter: ((List<ChapterList.Item>) -> Unit)?,
     nightReadEnabled: Boolean,
@@ -172,6 +173,7 @@ fun MangaScreen(
                 onChapterClicked = onChapterClicked,
                 onDownloadChapter = onDownloadChapter,
                 onTranslateChapter = onTranslateChapter,
+                onDeleteTranslationChapter = onDeleteTranslationChapter,
                 onReRenderChapter = onReRenderChapter,
                 onNightRenderChapter = onNightRenderChapter,
                 nightReadEnabled = nightReadEnabled,
@@ -215,6 +217,7 @@ fun MangaScreen(
                 onChapterClicked = onChapterClicked,
                 onDownloadChapter = onDownloadChapter,
                 onTranslateChapter = onTranslateChapter,
+                onDeleteTranslationChapter = onDeleteTranslationChapter,
                 onReRenderChapter = onReRenderChapter,
                 onNightRenderChapter = onNightRenderChapter,
                 nightReadEnabled = nightReadEnabled,
@@ -262,6 +265,7 @@ private fun MangaScreenSmallImpl(
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onTranslateChapter: ((List<ChapterList.Item>) -> Unit)?,
+    onDeleteTranslationChapter: ((List<ChapterList.Item>) -> Unit)? = null,
     onReRenderChapter: ((List<ChapterList.Item>, String) -> Unit)?,
     onNightRenderChapter: ((List<ChapterList.Item>) -> Unit)?,
     nightReadEnabled: Boolean,
@@ -371,6 +375,7 @@ private fun MangaScreenSmallImpl(
                 onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                 onDownloadChapter = onDownloadChapter,
                 onTranslateChapter = onTranslateChapter,
+                onDeleteTranslationChapter = onDeleteTranslationChapter,
                 onReRenderChapter = onReRenderChapter,
                 onNightRenderChapter = onNightRenderChapter,
                 nightReadEnabled = nightReadEnabled,
@@ -520,6 +525,7 @@ fun MangaScreenLargeImpl(
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onTranslateChapter: ((List<ChapterList.Item>) -> Unit)?,
+    onDeleteTranslationChapter: ((List<ChapterList.Item>) -> Unit)? = null,
     onReRenderChapter: ((List<ChapterList.Item>, String) -> Unit)?,
     onNightRenderChapter: ((List<ChapterList.Item>) -> Unit)?,
     nightReadEnabled: Boolean,
@@ -626,6 +632,7 @@ fun MangaScreenLargeImpl(
                     onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                     onDownloadChapter = onDownloadChapter,
                     onTranslateChapter = onTranslateChapter,
+                    onDeleteTranslationChapter = onDeleteTranslationChapter,
                     onReRenderChapter = onReRenderChapter,
                     onNightRenderChapter = onNightRenderChapter,
                     nightReadEnabled = nightReadEnabled,
@@ -776,6 +783,7 @@ private fun SharedMangaBottomActionMenu(
     onMarkPreviousAsReadClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onTranslateChapter: ((List<ChapterList.Item>) -> Unit)?,
+    onDeleteTranslationChapter: ((List<ChapterList.Item>) -> Unit)? = null,
     onReRenderChapter: ((List<ChapterList.Item>, String) -> Unit)?,
     onNightRenderChapter: ((List<ChapterList.Item>) -> Unit)?,
     nightReadEnabled: Boolean,
@@ -833,6 +841,14 @@ private fun SharedMangaBottomActionMenu(
             onMultiDeleteClicked(selected.fastMap { it.chapter })
         }.takeIf {
             selected.fastAny { it.downloadState == Download.State.DOWNLOADED }
+        },
+        onDeleteTranslationClicked = {
+            onDeleteTranslationChapter!!(selected.toList())
+        }.takeIf {
+            // [MTYOMI] 刪除翻譯：只對已翻（或失敗留有殘頁）的章顯示
+            onDeleteTranslationChapter != null && selected.fastAny {
+                it.isTranslated || it.translationStatus == TranslationItem.Status.ERROR
+            }
         },
     )
 

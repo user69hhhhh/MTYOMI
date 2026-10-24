@@ -1524,6 +1524,8 @@
     <string name="pref_translation_ocr_second_pass_summary">Lines the OCR reads weakly or not at all are re-scanned zoomed in at 2×. Slower, but fewer missed bubbles — helps small text and Arabic dots.</string>
     <string name="pref_translation_erase_untranslated">Erase untranslated text (SFX)</string>
     <string name="pref_translation_erase_untranslated_summary">Text the translator leaves unchanged — mostly sound effects — is erased instead of pasted back in the original language. Real dialogue that gets filtered by mistake is erased too.</string>
+    <string name="pref_translation_noise_filter">Filter OCR noise (English word list)</string>
+    <string name="pref_translation_noise_filter_summary">Before translating, OCR regions that contain no real English word (SCOWL list) are dropped — usually lettering hallucinated from the art itself. English source only.</string>
     <string name="pref_translation_no_word_tear">Prevent word tearing</string>
     <string name="pref_translation_no_word_tear_summary">Never split a word across two lines — lines break only at spaces, and the text shrinks to fit instead. For Arabic and other space-separated languages; Japanese/Chinese are unaffected.</string>
     <string name="pref_translation_fit_retranslate">Shorter retranslation when text won't fit</string>
@@ -1642,6 +1644,8 @@
     <string name="reader_translate_chapter_stopped">Stopped translating this chapter</string>
     <!-- Yakuyomi: re-render -->
     <string name="action_rerender">Re-render</string>
+    <string name="action_delete_translation">Delete translation</string>
+    <string name="translation_deleted">Translation deleted</string>
     <string name="rerender_method_title">Re-render text-removal method</string>
     <string name="rerender_boxfill">Fast (box-fill)</string>
     <string name="rerender_auto_whole">AI removal</string>

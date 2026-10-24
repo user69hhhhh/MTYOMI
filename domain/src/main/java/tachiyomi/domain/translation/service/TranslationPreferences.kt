@@ -153,6 +153,9 @@ class TranslationPreferences(
     /** 實驗：去字不回貼（引擎 RenderConfig.eraseUntranslated；fork 新增）。被過濾的文字（多為 SFX）只去字、不重貼原文。預設關。 */
     val eraseUntranslated = preferenceStore.getBoolean("translation_erase_untranslated", false)
 
+    /** [MTYOMI] 英文 OCR 噪聲過濾（SCOWL 詞表；引擎 OcrConfig.noiseFilter；仿 xpmanga）。預設關。 */
+    val noiseFilter = preferenceStore.getBoolean("translation_noise_filter", false)
+
     /** 實驗：防撕詞（引擎 RenderConfig.noWordTear；fork 新增）。橫排換行只在空白處斷行、不把詞切成兩行。預設關。 */
     val noWordTear = preferenceStore.getBoolean("translation_no_word_tear", false)
 
@@ -348,6 +351,9 @@ class TranslationPreferences(
         const val FONT_KOMIKA_TEXT = "komika_text"
         const val FONT_BALOO_BHAIJAAN_2 = "baloo_bhaijaan_2" // 圓潤漫畫風（阿拉伯掃譯圈最常用的一款；變量字型釘死 ExtraBold 靜態實例）
         const val FONT_KOMIKA_AXIS = "komika_axis" // 手繪 SFX 風（Komika 家族；狀聲詞/喊叫字用）
+        const val FONT_MARHEY = "marhey" // MTYOMI: 阿拉伯展示字型（xpmanga 同款；OFL；VF 釘死 Bold 靜態實例）
+        const val FONT_MADA = "mada" // MTYOMI: 阿拉伯無襯線（OFL；VF 釘死 Bold 靜態實例）
+        const val FONT_LALEZAR = "lalezar" // MTYOMI: 阿拉伯展示/SFX 字型（OFL；Regular）
     }
 }
 

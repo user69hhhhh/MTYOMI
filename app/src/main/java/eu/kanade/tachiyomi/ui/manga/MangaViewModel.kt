@@ -878,6 +878,21 @@ class MangaViewModel(
         }
     }
 
+    /** [MTYOMI] 章節多選「刪除翻譯」：還原保留的原圖並清掉翻譯狀態（無原圖的頁會刪掉、待重下載）。 */
+    fun runChapterDeleteTranslationAction(items: List<ChapterList.Item>) {
+        val manga = successState?.manga ?: return
+        val targets = items.filter {
+            it.isDownloaded && (it.isTranslated || it.translationStatus == TranslationItem.Status.ERROR)
+        }.map { it.chapter }
+        if (targets.isEmpty()) return
+        viewModelScope.launchIO {
+            val processed = translationManager.deleteTranslations(manga, targets)
+            if (processed > 0) {
+                snackbarHostState.showSnackbar(context.stringResource(MR.strings.translation_deleted))
+            }
+        }
+    }
+
     /**
      * Yakuyomi 繼續擷取（詳情頁 overflow → [eu.kanade.tachiyomi.ui.capture.CaptureScreen]）：組出要帶入的
      * （書名, 來源網址）。只對 local 漫畫有意義（呼叫端已 gate）。

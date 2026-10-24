@@ -100,6 +100,8 @@ object EngineConfigMapping {
                 concurrency = ocrConcurrency,
                 // 實驗（fork）：弱行二次 OCR（裁出 2× 放大重讀），預設關。
                 secondPass = prefs.ocrSecondPass.get(),
+                // [MTYOMI] 英文 OCR 噪聲過濾開關（SCOWL 詞表由 service 從 assets 填入 noiseWords）。
+                noiseFilter = prefs.noiseFilter.get(),
                 // OCR 後端（fork）：來源＝阿拉伯文＋偏好選 paddle → PaddleOCR 阿拉伯文；
                 // 來源＝日文／中文＋偏好選 v6_small／v6_medium → PP-OCRv6（模型未下載時引擎自動退回主路徑）；
                 // 其餘一律主路徑。
@@ -191,6 +193,7 @@ object EngineConfigMapping {
         prefs.ocrUnsharp.get().toString(),
         prefs.ocrConcurrency.get(),
         prefs.ocrSecondPass.get().toString(), // 實驗：弱行二次 OCR
+        prefs.noiseFilter.get().toString(), // [MTYOMI] 英文 OCR 噪聲過濾
         prefs.arabicOcrEngine.get(), // 阿拉伯文 OCR 後端（與 sourceLangName 一起決定 OcrConfig.engine）
         prefs.cjkOcrEngine.get(), // 日／中 OCR 後端（同上）
         // —— 去字（InpainterConfig）——

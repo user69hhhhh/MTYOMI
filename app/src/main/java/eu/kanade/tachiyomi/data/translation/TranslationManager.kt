@@ -420,6 +420,35 @@ class TranslationManager(private val context: Context) {
     }
 
     /**
+     * [MTYOMI] 刪除所選章的翻譯（章節多選「刪除翻譯」）：先取消排隊中的翻譯項，再逐章清理——
+     * 鬆散夾 → [PageTranslator.deleteChapterTranslation]（還原保留的原圖、清狀態檔）；
+     * 壓縮檔章 → 譯圖就在檔本體內、無原圖可還原 → 刪整個檔（章節回到未下載，重下載即乾淨原圖）。
+     * local 來源的壓縮檔是使用者的本機檔案，不刪、略過。回傳實際處理的章數。
+     */
+    suspend fun deleteTranslations(manga: Manga, chapters: List<Chapter>): Int {
+        if (chapters.isEmpty()) return 0
+        val ids = chapters.map { it.id }
+        cancelTranslation(ids)
+        ids.forEach { clearPending(it) }
+        val isLocal = sourceManager.getOrStub(manga.source) is LocalSource
+        var processed = 0
+        for (chapter in chapters) {
+            val dir = chapterDir(manga, chapter) ?: continue
+            if (dir.isDirectory) {
+                pageTranslator.deleteChapterTranslation(dir)
+                processed++
+            } else if (!isLocal) {
+                if (runCatching { dir.delete() }.isSuccess) processed++
+            }
+        }
+        if (processed > 0) {
+            forgetChapterOutputs(ids)
+            translationCache.invalidate(manga.id)
+        }
+        return processed
+    }
+
+    /**
      * 每翻好一頁就推一次（chapterId, pageName）。給即時翻 [eu.kanade.tachiyomi.ui.reader.loader.TranslatingPageLoader]
      * **直接重畫該頁**，取代「觀察 conflated 的 [queueState] + 每次讀 manifest 檔」那條——後者會 conflate 丟中間值 +
      * 檔案讀慢，導致某頁翻完當下沒被即時比中、要等之後某頁 emit 才順便補上（更新延遲）。SharedFlow 有緩衝、不丟事件。

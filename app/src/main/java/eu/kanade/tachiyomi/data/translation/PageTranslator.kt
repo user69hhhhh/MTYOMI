@@ -101,7 +101,10 @@ class PageTranslator(private val context: Context) {
      * 去字貴（aot／下載時 AI 去字）→ 深 2＝CPU 綁定（再深不加速，且多頁去字疊加吃記憶體）。真機 benchmark 定案。
      */
     private fun pipelineDepth(methodRaw: String): Int =
-        if (TranslationEngineConfig.mapInpaintMethod(methodRaw) == "boxfill") 4 else 2
+        // MTYOMI (user directive, Oct 23 2026): strictly page-by-page, in page order —
+        // one page in flight, lands before the next starts. (Upstream: boxfill 4 / else 2,
+        // which landed pages out of order — middle of the chapter before the first pages.)
+        1
 
     /**
      * 翻譯 [chapterDir]（UniFile，相容本機/SAF）內所有頁圖、就地覆蓋成功的頁。
@@ -163,6 +166,7 @@ class PageTranslator(private val context: Context) {
         // 該話資料夾的 [ERRORS_FILE]（同步到雲端可直接查；未標記的頁留待重試＝整章 isChapterTranslated=false 變紅）。
         val errors = StringBuilder()
         var materialsFailed = false // 素材存失敗只記一次（避免 18 頁刷 18 行）
+        var manifestFailed = false // MTYOMI fix: manifest 磁碟寫入失敗只記一次
         // 共享可變狀態（done/計數/errors/進度）在跨頁併發下的守鎖：只保護「讀-改-寫」那一小段（含 writeManifest），
         // 重活（engine.translatePage 網路+推論、writeBack/saveMaterials 的檔案 I/O）都在鎖外並發跑。
         val stateMutex = Mutex()
@@ -254,6 +258,7 @@ class PageTranslator(private val context: Context) {
                                 when (val r = engineService.translatePage(bmp, inpaintMethodRaw)) {
                                     is PageResult.Translated -> {
                                         val keepThisPage = keepMaterials && r.analysis != null
+                                        var manifestOk = true // MTYOMI fix: set false if the manifest disk write fails
                                         // 落地整段在頁鎖內（只擋同一頁；別頁照樣並發）：存原檔 → 覆蓋頁檔 → 存素材 → 記清單 → 刪記號。
                                         val landed = lock.withLock {
                                             // 引擎跑的這段時間裡，同一頁被 reader「翻譯這頁」落地了（頁檔現在是譯圖、原檔已存）
@@ -261,7 +266,14 @@ class PageTranslator(private val context: Context) {
                                             if (name in readDonePages(chapterDir)) return@withLock false
                                             // 保留素材：原檔位元組要在頁檔被譯圖覆蓋**之前**原樣複製出去（覆蓋後就沒有了）。
                                             // 複製失敗不擋翻譯，[saveMaterials] 會退回舊做法（把解碼後的原圖存成有損 WebP）。
-                                            val saved = if (keepThisPage) saveOriginalBytes(chapterDir, img) else null
+                                            // MTYOMI fix: snapshot UNCONDITIONALLY. The snapshot + inflight marker
+                                            // are the only interruption insurance (see recoverInterrupted); gating
+                                            // them on the materials prefs left the default config unprotected — a
+                                            // kill between writeBack and the manifest commit made the next run
+                                            // re-translate the burned-in page (doubled output). The copy is
+                                            // kept after a verified manifest commit (v12): Delete-translation
+                                            // restores original pages from it.
+                                            val saved = saveOriginalBytes(chapterDir, img)
                                             writeBackOrRestore(img, r.page, saved) // 各頁寫各自檔、並發
                                             r.page.recycle() // 譯圖已落檔、後面用不到 → 立即回收（跨頁併發下少堆一張 bitmap，降記憶體峰值）
                                             // 成品頁換了 → 舊夜讀版（若有，如先手動產生再翻譯）作廢；翻完由開關開著的夜讀佇列補做。
@@ -300,10 +312,28 @@ class PageTranslator(private val context: Context) {
                                                 }
                                                 translated++
                                                 done.add(name)
-                                                done.addAll(commitManifest(chapterDir, done))
+                                                // MTYOMI fix: checked commit — a silently failed manifest
+                                                // write used to lose this page's record while its file
+                                                // stayed translated (re-fed as an "original" next run).
+                                                val (merged, diskOk) = commitManifestChecked(chapterDir, done)
+                                                done.addAll(merged)
+                                                if (!diskOk) {
+                                                    manifestOk = false
+                                                    if (!manifestFailed) {
+                                                        manifestFailed = true
+                                                        errors.appendLine("(manifest)\tmanifest write failed; page originals+markers kept, next run restores and retries")
+                                                    }
+                                                }
                                             }
                                             // 這頁進了清單 → 進行中記號用不到了（記號只對還沒進清單的頁有意義）。
-                                            saved?.marker?.let { m -> runCatching { m.delete() } }
+                                            // MTYOMI fix: drop the inflight marker only once the manifest
+                                            // write is verified on disk. The snapshot copy itself is KEPT
+                                            // (v12, user directive): it is what the chapter-list
+                                            // "Delete translation" action restores the original pages
+                                            // from. Costs ~1 extra copy of each translated page.
+                                            if (manifestOk) {
+                                                saved?.marker?.let { m -> runCatching { m.delete() } }
+                                            }
                                             true
                                         }
                                         if (landed) {
@@ -1966,6 +1996,64 @@ class PageTranslator(private val context: Context) {
         return images.all { it in done }
     }
 
+    /**
+     * [MTYOMI] 刪除本章翻譯（章節多選「刪除翻譯」）：逐頁用保留的原圖還原——有原檔（`.yakuyomi` 裡的 orig 快照）
+     * 就位元組原樣寫回、只有舊版 WebP 就解碼後照頁檔格式重編碼寫回。**沒有原圖、又在 manifest 裡的頁直接
+     * 刪檔**：它唯一的拷貝就是譯圖（或無字略過頁），留著下次重翻會疊加；刪掉後重下載即是乾淨原圖。
+     * 不在 manifest、又沒原圖的頁＝從未落地過的原圖，不動。最後刪 manifest、錯誤檔與整個素材夾
+     * （原圖/遮罩/夜讀檔都在裡面）。回傳（已還原頁數, 已刪頁數）；還原失敗的頁原封不動、不計數。
+     */
+    suspend fun deleteChapterTranslation(chapterDir: UniFile): Pair<Int, Int> {
+        val images = chapterDir.listFiles()
+            ?.filter { f -> f.isFile && (f.name?.substringAfterLast('.', "")?.lowercase() ?: "") in IMAGE_EXT }
+            ?.sortedBy { it.name.orEmpty() }
+            .orEmpty()
+        val matDir = chapterDir.findFile(MATERIALS_DIR)
+        val done = readDonePages(chapterDir)
+        if (done.isEmpty() && matDir == null) return 0 to 0
+        var restored = 0
+        var deletedPages = 0
+        for (img in images) {
+            val name = img.name ?: continue
+            val original = matDir?.let { findOriginalMaterial(it, name) }
+            if (original == null) {
+                if (name in done && runCatching { img.delete() }.isSuccess) deletedPages++
+                continue
+            }
+            val ok = pageLock(img).withLock {
+                if (original.second) {
+                    restoreOriginalBytes(original.first, img)
+                } else {
+                    val bmp = runCatching {
+                        context.contentResolver.openInputStream(original.first.uri)
+                            ?.use { BitmapFactory.decodeStream(it) }
+                    }.getOrNull()
+                    if (bmp == null) {
+                        false
+                    } else {
+                        val written = runCatching { writeBack(img, bmp) }.isSuccess
+                        bmp.recycle()
+                        written
+                    }
+                }
+            }
+            if (ok) restored++
+        }
+        runCatching { chapterDir.findFile(MARKER)?.delete() }
+        runCatching { chapterDir.findFile(ERRORS_FILE)?.delete() }
+        matDir?.let { runCatching { deleteRecursively(it) } }
+        TraceLog.log("page", "deleteTranslation ${chapterDir.name} restored=$restored deleted=$deletedPages")
+        return restored to deletedPages
+    }
+
+    /** 遞迴刪 UniFile 資料夾（SAF 的 DocumentFile.delete 對非空資料夾不可靠，逐個刪）。best-effort。 */
+    private fun deleteRecursively(file: UniFile) {
+        if (file.isDirectory) {
+            file.listFiles()?.forEach { deleteRecursively(it) }
+        }
+        runCatching { file.delete() }
+    }
+
     /** 讀 manifest（已處理頁名集合）。 */
     private fun readDonePages(chapterDir: UniFile): Set<String> {
         val f = chapterDir.findFile(MARKER) ?: return emptySet()
@@ -1976,10 +2064,9 @@ class PageTranslator(private val context: Context) {
         }.getOrNull() ?: emptySet()
     }
 
-    /** 覆寫 manifest（每頁成功後叫一次；小檔、相對翻譯耗時可忽略，給中斷後 resume）。只給 [commitManifest] 用。 */
-    private fun writeManifest(chapterDir: UniFile, done: Set<String>) {
+    /** 覆寫 manifest（每頁成功後叫一次；小檔、相對翻譯耗時可忽略，給中斷後 resume）。只給 [commitManifest] 用。回傳是否真的寫進磁碟（MTYOMI fix）。 */
+    private fun writeManifest(chapterDir: UniFile, done: Set<String>): Boolean =
         overwriteBytes(chapterDir, MARKER, done.joinToString("\n").toByteArray())
-    }
 
     /**
      * manifest 的「讀-改-寫」：磁碟上現有的 ∪ [known]，寫回，回傳合併後的集合。經 [manifestMutex]（行程內所有
@@ -1988,10 +2075,13 @@ class PageTranslator(private val context: Context) {
      * [known] 帶呼叫端手上知道的全部頁名：萬一這次讀檔失敗（回空集合），也不會把它們寫丟。
      */
     private suspend fun commitManifest(chapterDir: UniFile, known: Set<String>): Set<String> =
+        commitManifestChecked(chapterDir, known).first
+
+    /** [commitManifest] + 磁碟寫入是否成功（MTYOMI fix：寫失敗時呼叫端保留原檔/記號，下次啟動靠 [recoverInterrupted] 復原重翻）。 */
+    private suspend fun commitManifestChecked(chapterDir: UniFile, known: Set<String>): Pair<Set<String>, Boolean> =
         manifestMutex.withLock {
             val merged = readDonePages(chapterDir) + known
-            writeManifest(chapterDir, merged)
-            merged
+            merged to writeManifest(chapterDir, merged)
         }
 
     /**

@@ -45,6 +45,9 @@ object TranslationEngineConfig {
     private const val PADDLE_PARAM_ASSET = "models/paddle_ar_rec.ncnn.param"
     private const val PADDLE_BIN_ASSET = "models/paddle_ar_rec.ncnn.bin"
     private const val ARABIC_DICT_ASSET = "models/arabic_dict.txt"
+
+    /** [MTYOMI] SCOWL 英文詞表（OCR 噪聲過濾用；引擎 assets 內建）。 */
+    private const val NOISE_WORDS_ASSET = "models/en_words.txt"
     private const val PADDLE_KEYWORD = "paddle"
 
     /** MI-GAN 去字包在 APK assets 的路徑（28MB fp32；[ensureMiganAssets] 複製進下載區，與 PaddleOCR 同模式）。 */
@@ -88,6 +91,7 @@ object TranslationEngineConfig {
         val alphabet: List<String>,
         val paddleAlphabet: List<String> = emptyList(),
         val paddleV6Alphabet: List<String> = emptyList(),
+        val noiseWords: Set<String> = emptySet(),
     )
 
     /**
@@ -349,6 +353,11 @@ object TranslationEngineConfig {
         val v6Small = runCatching { resolvePaddleV6(context, medium = false) }.getOrNull()
         val v6Medium = runCatching { resolvePaddleV6(context, medium = true) }.getOrNull()
         val paddleV6Alphabet = if (v6Small != null || v6Medium != null) readPaddleV6Alphabet(context) else emptyList()
+        // [MTYOMI] SCOWL 英文詞表（OCR 噪聲過濾）：引擎 assets 內建；讀不到＝空集合、過濾不生效。
+        val noiseWords = runCatching {
+            context.assets.open(NOISE_WORDS_ASSET).bufferedReader().use { it.readLines() }
+                .map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        }.getOrDefault(emptySet())
         // 夜讀人物分割（ModelSet.charSegYoloNcnn/charSegCsegNcnn）刻意留 null：翻譯引擎用不到，
         // 不讓每次建引擎都為選配模型付 SAF 複製（BYOM 最多 ~147MB）；夜讀端自己走 resolveCharSegModels。
         return ModelSetBundle(
@@ -356,6 +365,7 @@ object TranslationEngineConfig {
             alphabet,
             paddleAlphabet,
             paddleV6Alphabet,
+            noiseWords = noiseWords,
         )
     }
 
